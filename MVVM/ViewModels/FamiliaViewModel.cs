@@ -1,5 +1,4 @@
 ﻿using Microsoft.Win32;
-
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -8,18 +7,22 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Data;
-
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
+using WPF_PAR.Services.Interfaces;
 
 namespace WPF_PAR.MVVM.ViewModels
 {
     public class FamiliaViewModel : ObservableObject
     {
+        //SERVICIOS
         private readonly ReportesService _reportesService;
         private readonly CatalogoService _catalogoService;
         private readonly SucursalesService _sucursalesService;
+        private readonly IDialogService _dialogService;
+        private readonly ISnackbarService _snackbarService;
+
         public ObservableCollection<FamiliaResumenModel> TarjetasFamilias { get; set; }
         public ObservableCollection<VentaReporteModel> DetalleVentas { get; set; }
         private List<VentaReporteModel> _ventasProcesadas;
@@ -94,9 +97,13 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand ActualizarCommand { get; set; }
         public RelayCommand VerDetalleCommand { get; set; } 
         public RelayCommand RegresarCommand { get; set; }  
-        public RelayCommand ExportarExcelCommand { get; set; } 
-        public FamiliaViewModel()
+        public RelayCommand ExportarExcelCommand { get; set; }
+        public FamiliaViewModel(IDialogService dialogService, ISnackbarService snackbarService)
         {
+            // Asignamos las dependencias
+            _dialogService = dialogService;
+            _snackbarService = snackbarService;
+
             _reportesService = new ReportesService();
             _catalogoService = new CatalogoService();
             _sucursalesService = new SucursalesService();
@@ -116,7 +123,6 @@ namespace WPF_PAR.MVVM.ViewModels
             });
 
             RegresarCommand = new RelayCommand(o => VerResumen = true);
-
             ExportarExcelCommand = new RelayCommand(o => GenerarReporteExcel());
         }
         private void InicializarTarjetasVacias()
@@ -199,22 +205,17 @@ namespace WPF_PAR.MVVM.ViewModels
                 foreach ( var venta in ventasRaw )
                 {
                     var info = _catalogoService.ObtenerInfo(venta.Articulo);
-
                     venta.Familia = info.FamiliaSimple;  
                     venta.LitrosUnitarios = info.Litros;
-
                     venta.Descripcion = string.IsNullOrEmpty(info.Descripcion) ? venta.Articulo : info.Descripcion;
                 }
-
                 _ventasProcesadas = ventasRaw;
-
                 GenerarResumenVisual();
-
                 VerResumen = true;
             }
             catch ( Exception ex )
             {
-                MessageBox.Show($"Error al generar reporte: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError($"Error al generar reporte: {ex.Message}", "Error");
             }
             finally
             {
@@ -321,17 +322,16 @@ namespace WPF_PAR.MVVM.ViewModels
         {
             if ( DetalleVentas == null || DetalleVentas.Count == 0 )
             {
-                MessageBox.Show("No hay datos para exportar.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                // REFACTORIZADO
+                _dialogService.ShowMessage("No hay datos para exportar.", "Aviso");
                 return;
             }
 
-            SaveFileDialog saveFileDialog = new SaveFileDialog
-            {
-                Filter = "Archivo CSV (*.csv)|*.csv",
-                FileName = $"Reporte_{SucursalSeleccionadaId}_{AnioSeleccionado}_{MesSeleccionado}_{TituloDetalle.Replace(":", "")}.csv"
-            };
+            string nombreArchivo = $"Reporte_{SucursalSeleccionadaId}_{AnioSeleccionado}_{MesSeleccionado}_{TituloDetalle.Replace(":", "")}.csv";
 
-            if ( saveFileDialog.ShowDialog() == true )
+            string rutaGuardado = _dialogService.ShowSaveFileDialog("Archivo CSV (*.csv)|*.csv", nombreArchivo);
+
+            if ( !string.IsNullOrEmpty(rutaGuardado) )
             {
                 try
                 {
@@ -340,28 +340,21 @@ namespace WPF_PAR.MVVM.ViewModels
 
                     foreach ( var v in DetalleVentas )
                     {
-                        // Limpiar comas para no romper el CSV
-                        string cliente = v.Cliente.Replace(",", " ");
-                        string familia = v.Familia.Replace(",", " ");
+                        string cliente = v.Cliente?.Replace(",", " ") ?? "";
+                        string familia = v.Familia?.Replace(",", " ") ?? "";
+                        string desc = v.Descripcion?.Replace(",", " ") ?? "";
 
-                        string linea = $"{v.FechaEmision:dd/MM/yyyy},{v.Sucursal},{v.MovID},{v.Articulo},{v.Descripcion},{familia},{cliente},{v.Cantidad},{v.LitrosTotales},{v.TotalVenta}";
+                        string linea = $"{v.FechaEmision:dd/MM/yyyy},{v.Sucursal},{v.MovID},{v.Articulo},{desc},{familia},{cliente},{v.Cantidad},{v.LitrosTotales},{v.TotalVenta}";
                         sb.AppendLine(linea);
                     }
 
-                    File.WriteAllText(saveFileDialog.FileName, sb.ToString(), Encoding.UTF8);
-                    var snackbar = (Application.Current.MainWindow as MainWindow)?.FindName("MainSnackbar") as MaterialDesignThemes.Wpf.Snackbar;
-                    if ( snackbar != null )
-                    {
-                        snackbar.MessageQueue?.Enqueue("✅ Reporte exportado correctamente a Excel");
-                    }
+                    File.WriteAllText(rutaGuardado, sb.ToString(), Encoding.UTF8);
+
+                    _snackbarService.Show("✅ Reporte exportado correctamente a Excel");
                 }
                 catch ( Exception )
                 {
-                    var snackbar = ( Application.Current.MainWindow as MainWindow )?.FindName("MainSnackbar") as MaterialDesignThemes.Wpf.Snackbar;
-                    if ( snackbar != null )
-                    {
-                        snackbar.MessageQueue?.Enqueue("Hubo un error en el guardado del archivo");
-                    }
+                    _snackbarService.Show("Hubo un error en el guardado del archivo");
                 }
             }
         }

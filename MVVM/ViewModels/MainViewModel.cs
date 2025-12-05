@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-
 using WPF_PAR.Core;
+using WPF_PAR.Services;
+using WPF_PAR.Services.Interfaces;
 
 namespace WPF_PAR.MVVM.ViewModels
 {
@@ -40,9 +41,13 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand ToggleMenuCommand { get; set; }
         public MainViewModel()
         {
-            SettingsVM = new ();
-            DashboardVM = new ();
-            FamiliaVM = new ();
+            IDialogService dialogService = new DialogService();
+            ISnackbarService snackbarService = new SnackbarService();
+
+            DashboardVM = new DashboardViewModel(dialogService);
+            SettingsVM = new SettingsViewModel(dialogService);
+            FamiliaVM = new FamiliaViewModel(dialogService, snackbarService);
+            FamiliaVM = new (dialogService, snackbarService);
 
             CurrentView = DashboardVM;
 

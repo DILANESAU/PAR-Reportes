@@ -1,12 +1,16 @@
 ﻿using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
+
 using SkiaSharp;
+
 using System.Collections.ObjectModel;
 using System.Windows;
+
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
+using WPF_PAR.Services.Interfaces;
 
 namespace WPF_PAR.MVVM.ViewModels
 {
@@ -15,28 +19,25 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly VentasServices _ventasService;
         private readonly SucursalesService _sucursalesService;
         private List<VentasModel> _datosMemoria;
-
+        private readonly IDialogService _dialogService;
         private decimal _totalVentas;
         public decimal TotalVentas
         {
             get { return _totalVentas; }
             set { _totalVentas = value; OnPropertyChanged(); }
         }
-
         private int _cantidadTransacciones;
         public int CantidadTransacciones
         {
             get { return _cantidadTransacciones; }
             set { _cantidadTransacciones = value; OnPropertyChanged(); }
         }
-
         private string _topCliente;
         public string TopCliente
         {
             get { return _topCliente; }
             set { _topCliente = value; OnPropertyChanged(); }
         }
-
         private bool _isLoading;
         public bool IsLoading
         {
@@ -54,22 +55,18 @@ namespace WPF_PAR.MVVM.ViewModels
             get { return _listaVentas; }
             set { _listaVentas = value; OnPropertyChanged(); }
         }
-
         public ISeries[] SeriesGrafico { get; set; }
         public Axis[] EjeX { get; set; }
         public Axis[] EjeY { get; set; }
 
         public Dictionary<int, string> ListaSucursales { get; set; }
-
         private int _sucursalSeleccionadaId;
         public int SucursalSeleccionadaId
         {
             get => _sucursalSeleccionadaId;
             set { _sucursalSeleccionadaId = value; OnPropertyChanged(); }
         }
-
         public ObservableCollection<int> ListaAnios { get; set; }
-
         private int _anioSeleccionado;
         public int AnioSeleccionado
         {
@@ -85,8 +82,10 @@ namespace WPF_PAR.MVVM.ViewModels
             set { _mesSeleccionado = value; OnPropertyChanged(); }
         }
         public RelayCommand ActualizarCommand { get; set; }
-        public DashboardViewModel()
+        public DashboardViewModel(IDialogService dialogService)
         {
+            _dialogService = dialogService;
+
             _ventasService = new VentasServices();
             _sucursalesService = new SucursalesService();
             ListaVentas = new ObservableCollection<VentasModel>();
@@ -94,10 +93,8 @@ namespace WPF_PAR.MVVM.ViewModels
             ActualizarCommand = new RelayCommand(o => CargarDatos());
 
             CargarFiltrosIniciales();
-
             CargarDatos();
         }
-
         private void CargarFiltrosIniciales()
         {
             ListaAnios = new ObservableCollection<int> { 2023, 2024, 2025 };
@@ -110,10 +107,8 @@ namespace WPF_PAR.MVVM.ViewModels
             };
             MesSeleccionado = DateTime.Now.Month;
 
-            // 1. CARGAR TODAS DEL CSV
             var todasLasSucursales = _sucursalesService.CargarSucursales();
 
-            // 2. FILTRAR SEGÚN PERMISOS DEL USUARIO
             if ( Session.UsuarioActual.SucursalesPermitidas == null || Session.UsuarioActual.SucursalesPermitidas.Count == 0 )
             {
                 ListaSucursales = todasLasSucursales;
@@ -127,7 +122,6 @@ namespace WPF_PAR.MVVM.ViewModels
 
             int sucursalGuardada = Properties.Settings.Default.SucursalDefaultId;
 
-            // A. Si tiene permiso para su favorita, la ponemos
             if ( ListaSucursales.ContainsKey(sucursalGuardada) )
             {
                 SucursalSeleccionadaId = sucursalGuardada;
@@ -152,7 +146,7 @@ namespace WPF_PAR.MVVM.ViewModels
             }
             catch ( Exception ex )
             {
-                MessageBox.Show($"Error al cargar datos: {ex.Message}", "Error de Conexión", MessageBoxButton.OK, MessageBoxImage.Error);
+                _dialogService.ShowError($"Error al cargar datos: {ex.Message}", "Error de Conexión");
             }
             finally
             {
