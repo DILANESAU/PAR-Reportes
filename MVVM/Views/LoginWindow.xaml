@@ -1,0 +1,53 @@
+﻿<Window x:Class="WPF_PAR.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Login" Height="450" Width="350"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" ResizeMode="NoResize"
+        Background="Transparent" AllowsTransparency="True"
+        FontFamily="{DynamicResource MaterialDesignFont}">
+
+    <Border CornerRadius="15" Background="#1E1E1E">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.5"/>
+        </Border.Effect>
+
+
+        <Grid>
+            <Button
+                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10"
+                Style="{StaticResource MaterialDesignIconForegroundButton}"
+                    Click="BtnCerrar_Click" Foreground="White">
+                <materialDesign:PackIcon x:Name="Ico" Kind="Close"/>
+            </Button>
+            <StackPanel VerticalAlignment="Center" Margin="40">
+
+                <materialDesign:PackIcon Kind="AccountCircle" Width="80" Height="80" 
+                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                         HorizontalAlignment="Center" Margin="0,0,0,20"/>
+
+                <TextBlock Text="BIENVENIDO" Foreground="White" FontSize="22" FontWeight="Bold" 
+                           HorizontalAlignment="Center" Margin="0,0,0,30"/>
+
+                <TextBox x:Name="txtUser"
+                         materialDesign:HintAssist.Hint="Usuario"
+                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                         Foreground="White" CaretBrush="White"
+                         Margin="0,0,0,20" FontSize="16"/>
+
+                <PasswordBox x:Name="txtPass"
+                             materialDesign:HintAssist.Hint="Contraseña"
+                             Style="{StaticResource MaterialDesignFloatingHintPasswordBox}"
+                             Foreground="White" CaretBrush="White"
+                             Margin="0,0,0,40" FontSize="16"/>
+
+                <Button x:Name="BtnLogin" Content="INICIAR SESIÓN" Height="45"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="22"
+                        Click="BtnLogin_Click"/>
+
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
