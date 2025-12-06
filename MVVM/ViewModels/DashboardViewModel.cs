@@ -1,12 +1,8 @@
 ﻿using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
-
 using SkiaSharp;
-
 using System.Collections.ObjectModel;
-using System.Windows;
-
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
@@ -48,17 +44,12 @@ namespace WPF_PAR.MVVM.ViewModels
                 OnPropertyChanged();
             }
         }
-
         private ObservableCollection<VentasModel> _listaVentas;
         public ObservableCollection<VentasModel> ListaVentas
         {
             get { return _listaVentas; }
             set { _listaVentas = value; OnPropertyChanged(); }
         }
-        public ISeries[] SeriesGrafico { get; set; }
-        public Axis[] EjeX { get; set; }
-        public Axis[] EjeY { get; set; }
-
         public Dictionary<int, string> ListaSucursales { get; set; }
         private int _sucursalSeleccionadaId;
         public int SucursalSeleccionadaId
@@ -74,7 +65,6 @@ namespace WPF_PAR.MVVM.ViewModels
             set { _anioSeleccionado = value; OnPropertyChanged(); }
         }
         public Dictionary<int, string> ListaMeses { get; set; }
-
         private int _mesSeleccionado;
         public int MesSeleccionado
         {
@@ -95,6 +85,9 @@ namespace WPF_PAR.MVVM.ViewModels
             CargarFiltrosIniciales();
             CargarDatos();
         }
+        public ISeries[] SeriesGrafico { get; set; }
+        public Axis[] EjeX { get; set; }
+        public Axis[] EjeY { get; set; }
         private void CargarFiltrosIniciales()
         {
             ListaAnios = new ObservableCollection<int> { 2023, 2024, 2025 };
@@ -153,7 +146,6 @@ namespace WPF_PAR.MVVM.ViewModels
                 IsLoading = false;
             }
         }
-
         private void CalcularResumen()
         {
             if ( _datosMemoria == null || !_datosMemoria.Any() )
@@ -175,7 +167,6 @@ namespace WPF_PAR.MVVM.ViewModels
 
             TopCliente = mejorCliente != null ? mejorCliente.Cliente : "N/A";
         }
-
         private void ConfigurarGrafico()
         {
             var ventasPorDia = _datosMemoria
@@ -191,22 +182,34 @@ namespace WPF_PAR.MVVM.ViewModels
                 return;
             }
 
-            SeriesGrafico = new ISeries[]
-            {
+            SeriesGrafico =
+            [
                 new ColumnSeries<decimal>
                 {
-                    Name = "Ventas",
+                   Name = "Ventas",
                     Values = ventasPorDia.Select(x => x.Monto).ToArray(),
+                    
                     Fill = new SolidColorPaint(SKColors.CornflowerBlue),
+                    
+                    Rx = 10,
+                    Ry = 10,
+
+                    DataLabelsSize = 12,
+                    DataLabelsPaint = new SolidColorPaint(SKColors.Gray),
+                    DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Top,
+                    
+                    DataLabelsFormatter = (point) => point.Model.ToString("C0")
                 }
-            };
+            ];
 
             EjeX = new Axis[]
             {
                 new Axis
                 {
-                    Labels = ventasPorDia.Select(x => x.Dia.ToString()).ToArray(),
-                    Name = "Dia"
+                   Labels = ventasPorDia.Select(x => x.Dia.ToString()).ToArray(),
+                   Name = "Día del Mes",
+                   LabelsPaint = new SolidColorPaint(SKColors.Gray),
+                   TextSize = 12
                 }
             };
 
@@ -214,7 +217,10 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 new Axis
                 {
-                    Labeler = value => value.ToString("C2")
+                    Labeler = value => value.ToString("C0"),
+                    LabelsPaint = new SolidColorPaint(SKColors.Gray),
+                    TextSize = 12,
+                    ShowSeparatorLines = true
                 }
             };
 
