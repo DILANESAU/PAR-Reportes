@@ -43,11 +43,11 @@ namespace WPF_PAR.MVVM.ViewModels
         {
             IDialogService dialogService = new DialogService();
             ISnackbarService snackbarService = new SnackbarService();
+            BusinessLogicService businessLogic = new();
 
             DashboardVM = new DashboardViewModel(dialogService);
             SettingsVM = new SettingsViewModel(dialogService);
-            FamiliaVM = new FamiliaViewModel(dialogService, snackbarService);
-            FamiliaVM = new (dialogService, snackbarService);
+            FamiliaVM = new FamiliaViewModel(dialogService, snackbarService, businessLogic);
 
             CurrentView = DashboardVM;
 

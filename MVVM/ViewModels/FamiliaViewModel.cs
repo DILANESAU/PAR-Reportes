@@ -16,12 +16,12 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class FamiliaViewModel : ObservableObject
     {
-        //SERVICIOS
         private readonly ReportesService _reportesService;
         private readonly CatalogoService _catalogoService;
         private readonly SucursalesService _sucursalesService;
         private readonly IDialogService _dialogService;
         private readonly ISnackbarService _snackbarService;
+        private readonly BusinessLogicService _businessLogic;
 
         public ObservableCollection<FamiliaResumenModel> TarjetasFamilias { get; set; }
         public ObservableCollection<VentaReporteModel> DetalleVentas { get; set; }
@@ -98,14 +98,15 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand VerDetalleCommand { get; set; } 
         public RelayCommand RegresarCommand { get; set; }  
         public RelayCommand ExportarExcelCommand { get; set; }
-        public FamiliaViewModel(IDialogService dialogService, ISnackbarService snackbarService)
+        public FamiliaViewModel(IDialogService dialogService, ISnackbarService snackbarService , BusinessLogicService businessLogic)
         {
             // Asignamos las dependencias
             _dialogService = dialogService;
             _snackbarService = snackbarService;
+            _businessLogic = businessLogic;
 
             _reportesService = new ReportesService();
-            _catalogoService = new CatalogoService();
+            _catalogoService = new CatalogoService(_businessLogic);
             _sucursalesService = new SucursalesService();
 
             TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>();
@@ -124,6 +125,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
             RegresarCommand = new RelayCommand(o => VerResumen = true);
             ExportarExcelCommand = new RelayCommand(o => GenerarReporteExcel());
+            _businessLogic = businessLogic;
         }
         private void InicializarTarjetasVacias()
         {
@@ -132,7 +134,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
             foreach ( var nombre in familiasOrdenadas )
             {
-                string colorFondo = ObtenerColorFamilia(nombre);
+                string colorFondo = _businessLogic.ObtenerColorFamilia(nombre);
 
                 TarjetasFamilias.Add(new FamiliaResumenModel
                 {
@@ -255,7 +257,7 @@ namespace WPF_PAR.MVVM.ViewModels
                     }
                     else
                     {
-                        string color = ObtenerColorFamilia(nombreFamilia);
+                        string color = _businessLogic.ObtenerColorFamilia(nombreFamilia);
                         listaFinal.Add(new FamiliaResumenModel
                         {
                             NombreFamilia = nombreFamilia,
@@ -292,7 +294,7 @@ namespace WPF_PAR.MVVM.ViewModels
                                    .FirstOrDefault();
 
             string textoProd = topProducto != null ? $"{topProducto.Nombre} ({topProducto.Litros:N0} Lts)" : "N/A";
-            string colorFondo = ObtenerColorFamilia(grupo.Key);
+            string colorFondo = _businessLogic.ObtenerColorFamilia(grupo.Key);
 
             return new FamiliaResumenModel
             {
@@ -357,20 +359,6 @@ namespace WPF_PAR.MVVM.ViewModels
                     _snackbarService.Show("Hubo un error en el guardado del archivo");
                 }
             }
-        }
-        private string ObtenerColorFamilia(string familia)
-        {
-
-            if ( familia.Contains("Vinílica") ) return "#D19755"; 
-            if ( familia.Contains("Esmalte") ) return "#4D1311";  
-            if ( familia.Contains("Imper") ) return "#5d9a9f";   
-            if ( familia.Contains("Sellador") ) return "#1F7045";
-            if ( familia.Contains("Tráfico") ) return "#F9A825"; 
-            if ( familia.Contains("Industrial") ) return "#664072";
-            if ( familia.Contains("Accesorios") ) return "#ddaea6";
-            if ( familia.Contains("Solventes") ) return "#005c4b";
-            if ( familia.Contains("Ferretería") ) return "#4c85f3";
-            return "#616161";
         }
         private List<string> ObtenerFamiliasBase()
         {
