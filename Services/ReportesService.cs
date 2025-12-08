@@ -19,26 +19,34 @@ namespace WPF_PAR.Services
         public async Task<List<VentaReporteModel>> ObtenerVentasBrutas(string ejercicio, string sucursal, int mes)
         {
             string query = @"
-                SELECT
-                    v.FechaEmision,
-                    vd.Sucursal,
-                    c.Nombre,
-                    v.MovID,
-                    vd.Articulo,
-                    vd.Cantidad,
-                    vd.Precio as CostoUnitario,
-                    ISNULL(vd.DescuentoImporte, 0) AS [DescuentoImporte]
-                FROM
-                    VentaD vd
-                    JOIN ArtR a ON a.Articulo = vd.Articulo
-                    JOIN Venta v ON vd.ID = v.ID
-                    LEFT JOIN Cte c ON v.Cliente = c.Cliente
-                WHERE
-                    v.Ejercicio = @Ejercicio AND
-                    v.Periodo = @Periodo AND
-                    vd.Sucursal = @Sucursal AND
-                    vd.AplicaID IS NOT NULL AND
-                    v.Estatus = 'CONCLUIDO'";
+               SELECT
+            v.FechaEmision,
+            vd.Sucursal,
+            ISNULL(c.Nombre, 'Cliente General') AS NombreCliente,
+            v.MovID,
+            vd.Articulo,
+            SUM(vd.Cantidad) AS CantidadTotal,
+            
+            -- BLINDAJE: Calculamos el importe bruto directo en SQL
+            SUM(vd.Cantidad * vd.Precio) AS ImporteBrutoTotal, 
+            
+            SUM(ISNULL(vd.DescuentoImporte, 0)) AS DescuentoTotal
+        FROM
+            VentaD vd
+            JOIN Venta v ON vd.ID = v.ID
+            LEFT JOIN Cte c ON v.Cliente = c.Cliente
+        WHERE
+            v.Ejercicio = @Ejercicio AND
+            v.Periodo = @Periodo AND
+            vd.Sucursal = @Sucursal AND
+            vd.AplicaID IS NOT NULL AND
+            v.Estatus = 'CONCLUIDO'
+        GROUP BY
+            v.FechaEmision,
+            vd.Sucursal,
+            c.Nombre,
+            v.MovID,
+            vd.Articulo";
 
             var parametros = new Dictionary<string, object>
             {
@@ -47,16 +55,26 @@ namespace WPF_PAR.Services
                 { "@Periodo", mes }
             };
 
-            return await _sqlHelper.QueryAsync(query, parametros, lector => new VentaReporteModel
+            return await _sqlHelper.QueryAsync(query, parametros, lector =>
             {
-                FechaEmision = Convert.ToDateTime(lector["FechaEmision"]),
-                Sucursal = lector["Sucursal"].ToString(),
-                MovID = lector["MovID"].ToString(),
-                Articulo = lector["Articulo"].ToString().Trim(),
-                Cantidad = Convert.ToDouble(lector["Cantidad"]),
-                PrecioUnitario = Convert.ToDecimal(lector["CostoUnitario"]),
-                Cliente = lector["Nombre"].ToString(),
-                Descuento = Convert.ToDecimal(lector["DescuentoImporte"])
+                // Leemos los valores calculados por SQL
+                decimal importeBruto = Convert.ToDecimal(lector["ImporteBrutoTotal"]);
+                decimal descuento = Convert.ToDecimal(lector["DescuentoTotal"]);
+                double cantidad = Convert.ToDouble(lector["CantidadTotal"]);
+
+                return new VentaReporteModel
+                {
+                    FechaEmision = Convert.ToDateTime(lector["FechaEmision"]),
+                    Sucursal = lector["Sucursal"].ToString(),
+                    MovID = lector["MovID"].ToString(),
+                    Articulo = lector["Articulo"].ToString().Trim(),
+                    Cantidad = cantidad,
+                    Cliente = lector["NombreCliente"].ToString(),
+
+                    Descuento = descuento,
+
+                    PrecioUnitario = cantidad > 0 ? ( importeBruto / ( decimal ) cantidad ) : 0,
+                };
             });
         }
     }

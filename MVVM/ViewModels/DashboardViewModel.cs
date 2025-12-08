@@ -198,7 +198,9 @@ namespace WPF_PAR.MVVM.ViewModels
                     DataLabelsPaint = new SolidColorPaint(SKColors.Gray),
                     DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Top,
                     
-                    DataLabelsFormatter = (point) => point.Model.ToString("C0")
+                    DataLabelsFormatter = (point) => point.Model.ToString("C0"),
+
+                    YToolTipLabelFormatter = (chartPoint) => $"{chartPoint.Model:C2}"
                 }
             ];
 

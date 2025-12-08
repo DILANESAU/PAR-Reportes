@@ -146,7 +146,9 @@
                             <lvc:PieChart Series="{Binding SeriesDetalle}" 
                                           LegendPosition="Right"
                                           Margin="0,20,0,0"
-                                          InitialRotation="-90"/>
+                                          InitialRotation="-90"
+                                          TooltipTextSize="16"  
+                                          TooltipTextPaint="{Binding TooltipTextPaint}"/>
                         </Grid>
                     </materialDesign:Card>
 

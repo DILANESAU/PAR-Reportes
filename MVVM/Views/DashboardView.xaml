@@ -188,7 +188,9 @@
                                                 Series="{Binding SeriesGrafico}"
                                                 XAxes="{Binding EjeX}"
                                                 YAxes="{Binding EjeY}"
-                                                Margin="0,15,0,0"/>
+                                                Margin="0,15,0,0"
+                                                TooltipTextSize="16"
+                                                TooltipTextPaint="{Binding TooltipTextPaint}"/>
                         </Grid>
                     </materialDesign:Card>
                 </Grid>

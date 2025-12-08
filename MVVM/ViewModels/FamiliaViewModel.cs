@@ -33,8 +33,27 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly BusinessLogicService _businessLogic;
 
         // Propiedades Principales
-        public ObservableCollection<FamiliaResumenModel> TarjetasFamilias { get; set; }
-        public ObservableCollection<VentaReporteModel> DetalleVentas { get; set; }
+        private ObservableCollection<VentaReporteModel> _detalleVentas;
+        public ObservableCollection<VentaReporteModel> DetalleVentas
+        {
+            get => _detalleVentas;
+            set
+            {
+                _detalleVentas = value;
+                OnPropertyChanged(); // ¡Esto es lo que faltaba! Avisa a la vista.
+            }
+        }
+
+        private ObservableCollection<FamiliaResumenModel> _tarjetasFamilias;
+        public ObservableCollection<FamiliaResumenModel> TarjetasFamilias
+        {
+            get => _tarjetasFamilias;
+            set
+            {
+                _tarjetasFamilias = value;
+                OnPropertyChanged();
+            }
+        }
         private List<VentaReporteModel> _ventasProcesadas;
 
         // Propiedades de Gráficos para el Detalle
@@ -323,7 +342,8 @@ namespace WPF_PAR.MVVM.ViewModels
 
                 // --- CORRECCIÓN AQUÍ ---
                 // Usamos p.Model porque el "Modelo" es el decimal mismo.
-                DataLabelsFormatter = p => $"{p.Model:C0}"
+                DataLabelsFormatter = p => $"{p.Model:C0}",
+                ToolTipLabelFormatter = (point) => $"{point.Context.Series.Name}: {point.Model:C2}"
                 // -----------------------
 
             }).ToArray();
