@@ -1,11 +1,7 @@
 ﻿using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
-
-using Microsoft.Win32;
-
 using SkiaSharp;
-
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -14,7 +10,6 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Data;
-
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
@@ -63,6 +58,9 @@ namespace WPF_PAR.MVVM.ViewModels
             get => _seriesDetalle;
             set { _seriesDetalle = value; OnPropertyChanged(); }
         }
+        public ISeries[] SeriesTendencia { get; set; }
+        public Axis[] EjeXTendencia { get; set; }
+        private List<VentaReporteModel> _datosAnualesCache;
 
         private ObservableCollection<LineaResumenModel> _resumenLineas;
         public ObservableCollection<LineaResumenModel> ResumenLineas
@@ -239,6 +237,12 @@ namespace WPF_PAR.MVVM.ViewModels
 
                 _ventasProcesadas = ventasRaw;
                 GenerarResumenVisual();
+                _datosAnualesCache = await _reportesService.ObtenerHistoricoAnualPorArticulo(AnioSeleccionado, SucursalSeleccionadaId.ToString());
+                foreach ( var item in _datosAnualesCache )
+                {
+                    var info = _catalogoService.ObtenerInfo(item.Articulo);
+                    item.Familia = info.FamiliaSimple;
+                }
                 VerResumen = true;
             }
             catch ( Exception ex )
@@ -305,9 +309,44 @@ namespace WPF_PAR.MVVM.ViewModels
 
             // 2. Calcular Resumen por LÍNEA (El "Dashboard" interno)
             CalcularResumenPorLineas(filtrado);
+            CalcularTendenciaAnual(familia);
 
             // 3. Cambiar vista
             VerResumen = false;
+        }
+        private void CalcularTendenciaAnual(string familia)
+        {
+            // Filtramos del caché global solo lo de esta familia
+            var ventasFamiliaAnual = _datosAnualesCache
+                .Where(x => x.Familia == familia)
+                .GroupBy(x => x.FechaEmision.Month)
+                .Select(g => new { Mes = g.Key, Total = g.Sum(v => v.TotalVenta) })
+                .ToList();
+
+            var valores = new decimal[12];
+            foreach ( var v in ventasFamiliaAnual ) valores[v.Mes - 1] = v.Total;
+
+            SeriesTendencia = new ISeries[]
+            {
+        new LineSeries<decimal>
+        {
+            Name = "Tendencia",
+            Values = valores,
+            Stroke = new SolidColorPaint(SKColors.Orange) { StrokeThickness = 3 },
+            GeometryFill = new SolidColorPaint(SKColors.Orange),
+            GeometrySize = 8,
+            Fill = null, // Solo línea
+            XToolTipLabelFormatter = (p) => $"{p.Model:C0}"
+        }
+            };
+
+            EjeXTendencia = new Axis[]
+            {
+        new Axis { Labels = new[] { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" } }
+            };
+
+            OnPropertyChanged(nameof(SeriesTendencia));
+            OnPropertyChanged(nameof(EjeXTendencia));
         }
         private void CalcularResumenPorLineas(List<VentaReporteModel> ventasFamilia)
         {
@@ -340,11 +379,8 @@ namespace WPF_PAR.MVVM.ViewModels
                 DataLabelsSize = 10,
                 DataLabelsPosition = ( LiveChartsCore.Measure.PolarLabelsPosition )  LiveChartsCore.Measure.DataLabelsPosition.Middle ,
 
-                // --- CORRECCIÓN AQUÍ ---
-                // Usamos p.Model porque el "Modelo" es el decimal mismo.
                 DataLabelsFormatter = p => $"{p.Model:C0}",
                 ToolTipLabelFormatter = (point) => $"{point.Context.Series.Name}: {point.Model:C2}"
-                // -----------------------
 
             }).ToArray();
 

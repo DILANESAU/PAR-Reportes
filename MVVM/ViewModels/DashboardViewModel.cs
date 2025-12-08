@@ -88,6 +88,8 @@ namespace WPF_PAR.MVVM.ViewModels
         public ISeries[] SeriesGrafico { get; set; }
         public Axis[] EjeX { get; set; }
         public Axis[] EjeY { get; set; }
+        public ISeries[] SeriesHistorico { get; set; }
+        public Axis[] EjeXHistorico { get; set; }
         private void CargarFiltrosIniciales()
         {
             ListaAnios = new ObservableCollection<int> { 2023, 2024, 2025 };
@@ -136,6 +138,9 @@ namespace WPF_PAR.MVVM.ViewModels
                 CalcularResumen();
 
                 ConfigurarGrafico();
+
+                var datosAnuales = await _ventasService.ObtenerVentaAnualAsync(SucursalSeleccionadaId, AnioSeleccionado);
+                ConfigurarGraficoHistorico(datosAnuales);
             }
             catch ( Exception ex )
             {
@@ -145,6 +150,42 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 IsLoading = false;
             }
+        }
+        private void ConfigurarGraficoHistorico(List<VentasModel> datosAnuales)
+        {
+            // Preparamos los 12 meses (rellenando con 0 si no hubo ventas ese mes)
+            var valores = new decimal[12];
+            var meses = new string[] { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
+
+            foreach ( var item in datosAnuales )
+            {
+                if ( int.TryParse(item.Mov, out int mes) && mes >= 1 && mes <= 12 )
+                {
+                    valores[mes - 1] = item.PrecioTotal;
+                }
+            }
+
+            SeriesHistorico = new ISeries[]
+            {
+        new LineSeries<decimal>
+        {
+            Name = "Venta Mensual",
+            Values = valores,
+            Fill = new SolidColorPaint(SKColors.CornflowerBlue.WithAlpha(50)), // Relleno transparente
+            Stroke = new SolidColorPaint(SKColors.CornflowerBlue) { StrokeThickness = 4 },
+            GeometrySize = 10,
+            GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 3 },
+            XToolTipLabelFormatter = (p) => $"{p.Model:C0}"
+        }
+            };
+
+            EjeXHistorico = new Axis[]
+            {
+        new Axis { Labels = meses, LabelsPaint = new SolidColorPaint(SKColors.Gray) }
+            };
+
+            OnPropertyChanged(nameof(SeriesHistorico));
+            OnPropertyChanged(nameof(EjeXHistorico));
         }
         private void CalcularResumen()
         {

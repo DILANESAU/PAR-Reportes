@@ -136,8 +136,10 @@
 
                 <Grid Grid.Row="1" Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="1.2*"/>
+                        <ColumnDefinition Width="25*"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="23*"/>
+                        <ColumnDefinition Width="30*"/>
                     </Grid.ColumnDefinitions>
 
                     <materialDesign:Card Grid.Column="0" Margin="0,0,10,0" UniformCornerRadius="10" Padding="15">
@@ -152,7 +154,17 @@
                         </Grid>
                     </materialDesign:Card>
 
-                    <materialDesign:Card Grid.Column="1" Margin="10,0,0,0" UniformCornerRadius="10" Padding="0">
+                    <materialDesign:Card Grid.Column="1" Margin="10,0,10,0" UniformCornerRadius="10" Padding="15" Grid.ColumnSpan="2">
+                        <Grid>
+                            <TextBlock Text="Tendencia Mensual" FontWeight="Bold" Opacity="0.7"/>
+                            <lvc:CartesianChart Series="{Binding SeriesTendencia}" 
+                                XAxes="{Binding EjeXTendencia}"
+                                Margin="0,20,0,0"
+                                TooltipTextSize="14"/>
+                        </Grid>
+                    </materialDesign:Card>
+
+                    <materialDesign:Card Grid.Column="3" Margin="10,0,0,0" UniformCornerRadius="10" Padding="0">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -236,7 +248,21 @@
             </Grid>
         </materialDesign:TransitioningContent>
 
-        <Grid Background="#90FFFFFF" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+        <Grid Background="#90FFFFFF" 
+              Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+              d:Visibility="Collapsed">
+            <materialDesign:Card UniformCornerRadius="10" Padding="30" HorizontalAlignment="Center" VerticalAlignment="Center" >
+                <StackPanel>
+                    <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                 Value="0" IsIndeterminate="True"
+                                 Width="50" Height="50"
+                                 Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+
+                    <TextBlock Text="Procesando Datos..." 
+                               HorizontalAlignment="Center" Margin="0,15,0,0" 
+                               FontWeight="Bold" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                </StackPanel>
+            </materialDesign:Card>
         </Grid>
     </Grid>
 </UserControl>
