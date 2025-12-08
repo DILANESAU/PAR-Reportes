@@ -8,8 +8,14 @@
         xmlns:v="clr-namespace:WPF_PAR.MVVM.Views"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
-        Title="Sistema Principal" Height="450" Width="800">
-    
+        Title="Sistema Principal - PAR Reportes" Height="700" Width="1100"
+        WindowStartupLocation="CenterScreen"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="13"
+        FontFamily="{DynamicResource MaterialDesignFont}"
+        Background="{DynamicResource MaterialDesignPaper}">
+
     <Window.DataContext>
         <vm:MainViewModel/>
     </Window.DataContext>
@@ -25,150 +31,139 @@
             <v:FamiliasView/>
         </DataTemplate>
 
-        <Style TargetType="Button" x:Key="MenuButton" BasedOn="{StaticResource MaterialDesignFlatButton}">
+        <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
             <Setter Property="Height" Value="50"/>
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Foreground" Value="White"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Padding" Value="20,0,0,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightForegroundBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SubNavButton" TargetType="Button" BasedOn="{StaticResource NavButton}">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="50,0,0,0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Opacity" Value="0.9"/>
         </Style>
     </Window.Resources>
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <Border Grid.Column="0" Background="#202020" ClipToBounds="True">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Width" Value="220"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsMenuOpen}" Value="False">
-                            <DataTrigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetProperty="Width"
-                                                     To="70" Duration="0:0:0.2"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.EnterActions>
-                            <DataTrigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetProperty="Width"
-                                                     To="220" Duration="0:0:0.2"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.ExitActions>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-
-            <Grid>
+    <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsMenuOpen}">
+        <materialDesign:DrawerHost.LeftDrawerContent>
+            <Grid Width="260">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="60"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="70"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <Button Grid.Column="0" 
-                        Style="{StaticResource MaterialDesignIconForegroundButton}"
-                        Command="{Binding ToggleMenuCommand}"
-                        Foreground="White" Width="40" Height="40">
-                        <materialDesign:PackIcon Kind="Menu" Width="25" Height="25"/>
-                    </Button>
-
-                    <TextBlock Grid.Column="1" Text="PAR Reportes" 
-                           Foreground="White" FontSize="20" FontWeight="Bold" 
-                           VerticalAlignment="Center"
-                           Visibility="{Binding IsMenuOpen, Converter={StaticResource BoolToVis}}"/>
-                </Grid>
-
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" Margin="0,10,0,0">
+                <materialDesign:ColorZone Mode="PrimaryMid" Padding="20" >
                     <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                        <Button Style="{StaticResource MenuButton}" Command="{Binding DashboardViewCommand}" ToolTip="Inicio">
+                            <materialDesign:PackIcon Kind="AccountCircle" Width="45" Height="45" VerticalAlignment="Center"/>
+
+                            <Button Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                    Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                    Command="{x:Static materialDesign:DrawerHost.CloseDrawerCommand}"
+                                    ToolTip="Ocultar menú">
+                                <materialDesign:PackIcon Kind="MenuOpen" Width="20" Height="20"/>
+                            </Button>
+                        </Grid>
+
+                        <TextBlock Text="Bienvenido," Opacity="0.8" FontSize="12" Margin="0,15,0,0"/>
+                        <TextBlock Text="Administrador" FontWeight="Bold" FontSize="18" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </materialDesign:ColorZone>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                    <StackPanel>
+                        <Button Style="{StaticResource NavButton}" Command="{Binding DashboardViewCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="ViewDashboard" Width="24" Height="24" VerticalAlignment="Center"/>
-
-                                <TextBlock Text="Dashboard" Margin="20,0,0,0" VerticalAlignment="Center"
-                                       Visibility="{Binding IsMenuOpen, Converter={StaticResource BoolToVis}}"/>
+                                <materialDesign:PackIcon Kind="ViewDashboard" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                <TextBlock Text="Dashboard General" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
 
-                        <Separator Background="#444" Margin="10"/>
+                        <Separator Margin="10,5" Opacity="0.3"/>
+                        <TextBlock Text="REPORTES POR LÍNEA" FontSize="11" FontWeight="Bold" Opacity="0.5" Margin="20,10"/>
 
-                        <Expander HorizontalAlignment="Stretch" Background="Transparent" BorderBrush="Transparent">
+                        <Expander HorizontalAlignment="Stretch" Background="Transparent">
                             <Expander.Header>
-                                <Grid Width="180">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="30"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <materialDesign:PackIcon Grid.Column="0" Kind="HomeCity" Width="24" Height="24" Foreground="White"/>
-                                    <TextBlock Grid.Column="1" Text="Arquitectónica" Foreground="White" FontSize="15" Margin="15,0,0,0" VerticalAlignment="Center"
-                                           Visibility="{Binding DataContext.IsMenuOpen, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="-5,0,0,0">
+                                    <materialDesign:PackIcon Kind="HomeCity" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0" Opacity="0.7"/>
+                                    <TextBlock Text="Arquitectónica" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
                             </Expander.Header>
-
-                            <StackPanel Background="#151515">
-                                <Button Style="{StaticResource MenuButton}" Command="{Binding NavegarLineaCommand}" CommandParameter="Arquitectonica" ToolTip="Ver Resumen">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="• Resumen" Margin="35,0,0,0"/>
-                                    </StackPanel>
-                                </Button>
+                            <StackPanel>
+                                <Button Style="{StaticResource SubNavButton}" 
+                                        Command="{Binding NavegarLineaCommand}" 
+                                        CommandParameter="Arquitectonica"
+                                        Content="Ver Resumen"/>
                             </StackPanel>
                         </Expander>
 
-                        <Expander HorizontalAlignment="Stretch" Background="Transparent" BorderBrush="Transparent" Margin="0,5,0,0">
+                        <Expander HorizontalAlignment="Stretch" Background="Transparent">
                             <Expander.Header>
-                                <Grid Width="180">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="30"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <materialDesign:PackIcon Grid.Column="0" Kind="Factory" Width="24" Height="24" Foreground="White"/>
-                                    <TextBlock Grid.Column="1" Text="Especializada" Foreground="White" FontSize="15" Margin="15,0,0,0" VerticalAlignment="Center"
-                                           Visibility="{Binding DataContext.IsMenuOpen, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="-5,0,0,0">
+                                    <materialDesign:PackIcon Kind="Factory" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0" Opacity="0.7"/>
+                                    <TextBlock Text="Especializada" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
                             </Expander.Header>
-
-                            <StackPanel Background="#151515">
-                                <Button Style="{StaticResource MenuButton}" Command="{Binding NavegarLineaCommand}" CommandParameter="Especializada">
-                                    <TextBlock Text="• Resumen" Margin="35,0,0,0"/>
-                                </Button>
+                            <StackPanel>
+                                <Button Style="{StaticResource SubNavButton}" 
+                                        Command="{Binding NavegarLineaCommand}" 
+                                        CommandParameter="Especializada"
+                                        Content="Ver Resumen"/>
                             </StackPanel>
                         </Expander>
-
                     </StackPanel>
                 </ScrollViewer>
 
-                <StackPanel Grid.Row="2" Margin="0,0,0,20">
-                    <Separator Background="#444" Margin="10"/>
-                    <Button Style="{StaticResource MenuButton}" Command="{Binding SettingsViewCommand}" ToolTip="Configuración">
+                <StackPanel Grid.Row="2" Margin="0,0,0,10">
+                    <Separator Opacity="0.3"/>
+                    <Button Style="{StaticResource NavButton}" Command="{Binding SettingsViewCommand}">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Cog" Width="24" Height="24" VerticalAlignment="Center"/>
-                            <TextBlock Text="Ajustes" Margin="20,0,0,0" VerticalAlignment="Center"
-                                   Visibility="{Binding IsMenuOpen, Converter={StaticResource BoolToVis}}"/>
+                            <materialDesign:PackIcon Kind="Cog" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                            <TextBlock Text="Configuración" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource NavButton}" Foreground="Red" Opacity="0.8">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Logout" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                            <TextBlock Text="Cerrar Sesión" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
             </Grid>
-        </Border>
+        </materialDesign:DrawerHost.LeftDrawerContent>
 
-        <ContentControl Grid.Column="1" Content="{Binding CurrentView}"/>
+        <DockPanel>
+            <materialDesign:ColorZone Padding="16"
+                                      Mode="PrimaryMid" DockPanel.Dock="Top">
+                <DockPanel>
+                    <ToggleButton Style="{StaticResource MaterialDesignHamburgerToggleButton}" 
+                                  IsChecked="{Binding IsMenuOpen}"
+                                  Width="30" Height="30"/>
 
-        <materialDesign:Snackbar MessageQueue="{materialDesign:MessageQueue}" x:Name="MainSnackbar" Grid.ColumnSpan="2"/>
+                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20" FontWeight="Bold" 
+                               Text="PAR Reportes v1.0" Margin="16,0,0,0"/>
+                </DockPanel>
+            </materialDesign:ColorZone>
 
-    </Grid>
+            <ContentControl Content="{Binding CurrentView}" Margin="10"/>
+        </DockPanel>
+    </materialDesign:DrawerHost>
 </Window>
