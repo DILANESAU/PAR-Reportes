@@ -1,4 +1,11 @@
-﻿using Microsoft.Win32;
+﻿using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
+
+using Microsoft.Win32;
+
+using SkiaSharp;
+
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,6 +14,7 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Data;
+
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
@@ -16,6 +24,7 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class FamiliaViewModel : ObservableObject
     {
+        // Servicios
         private readonly ReportesService _reportesService;
         private readonly CatalogoService _catalogoService;
         private readonly SucursalesService _sucursalesService;
@@ -23,47 +32,42 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly ISnackbarService _snackbarService;
         private readonly BusinessLogicService _businessLogic;
 
+        // Propiedades Principales
         public ObservableCollection<FamiliaResumenModel> TarjetasFamilias { get; set; }
         public ObservableCollection<VentaReporteModel> DetalleVentas { get; set; }
         private List<VentaReporteModel> _ventasProcesadas;
+
+        // Propiedades de Gráficos para el Detalle
+        private ISeries[] _seriesDetalle;
+        public ISeries[] SeriesDetalle
+        {
+            get => _seriesDetalle;
+            set { _seriesDetalle = value; OnPropertyChanged(); }
+        }
+
+        private ObservableCollection<LineaResumenModel> _resumenLineas;
+        public ObservableCollection<LineaResumenModel> ResumenLineas
+        {
+            get => _resumenLineas;
+            set { _resumenLineas = value; OnPropertyChanged(); }
+        }
+
+        // Filtros y Estados (Igual que antes)
         public Dictionary<int, string> ListaSucursales { get; set; }
         private int _sucursalSeleccionadaId;
-        public int SucursalSeleccionadaId
-        {
-            get => _sucursalSeleccionadaId;
-            set { _sucursalSeleccionadaId = value; OnPropertyChanged(); }
-        }
-        private string _textoBusqueda;
-        public string TextoBusqueda
-        {
-            get => _textoBusqueda;
-            set
-            {
-                _textoBusqueda = value;
-                OnPropertyChanged();
-                FiltrarTabla();
-            }
-        }
+        public int SucursalSeleccionadaId { get => _sucursalSeleccionadaId; set { _sucursalSeleccionadaId = value; OnPropertyChanged(); } }
+
         public ObservableCollection<string> ListaAnios { get; set; }
         private string _anioSeleccionado;
-        public string AnioSeleccionado
-        {
-            get => _anioSeleccionado;
-            set { _anioSeleccionado = value; OnPropertyChanged(); }
-        }
+        public string AnioSeleccionado { get => _anioSeleccionado; set { _anioSeleccionado = value; OnPropertyChanged(); } }
+
         public Dictionary<int, string> ListaMeses { get; set; }
         private int _mesSeleccionado;
-        public int MesSeleccionado
-        {
-            get => _mesSeleccionado;
-            set { _mesSeleccionado = value; OnPropertyChanged(); }
-        }
+        public int MesSeleccionado { get => _mesSeleccionado; set { _mesSeleccionado = value; OnPropertyChanged(); } }
+
         private bool _isLoading;
-        public bool IsLoading
-        {
-            get => _isLoading;
-            set { _isLoading = value; OnPropertyChanged(); }
-        }
+        public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
+
         private bool _verResumen = true;
         public bool VerResumen
         {
@@ -72,61 +76,58 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 _verResumen = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(VerDetalle)); 
+                OnPropertyChanged(nameof(VerDetalle));
             }
         }
         public bool VerDetalle => !VerResumen;
-        private string _tituloDetalle;
-        public string TituloDetalle
-        {
-            get => _tituloDetalle;
-            set { _tituloDetalle = value; OnPropertyChanged(); }
-        }
-        private string _lineaActual = "Todas";
-        public void CargarPorLinea(string linea)
-        {
-            _lineaActual = linea;
-            if (_ventasProcesadas != null && _ventasProcesadas.Count > 0)
-            {
-                GenerarResumenVisual();
 
-            }
-            else 
-                EjecutarReporte();
-        }
-        public RelayCommand ActualizarCommand { get; set; }
-        public RelayCommand VerDetalleCommand { get; set; } 
-        public RelayCommand RegresarCommand { get; set; }  
-        public RelayCommand ExportarExcelCommand { get; set; }
-        public FamiliaViewModel(IDialogService dialogService, ISnackbarService snackbarService , BusinessLogicService businessLogic)
+        private string _tituloDetalle;
+        public string TituloDetalle { get => _tituloDetalle; set { _tituloDetalle = value; OnPropertyChanged(); } }
+
+        private string _textoBusqueda;
+        public string TextoBusqueda
         {
-            // Asignamos las dependencias
+            get => _textoBusqueda;
+            set { _textoBusqueda = value; OnPropertyChanged(); FiltrarTabla(); }
+        }
+
+        // Comandos
+        public RelayCommand ActualizarCommand { get; set; }
+        public RelayCommand VerDetalleCommand { get; set; }
+        public RelayCommand RegresarCommand { get; set; }
+        public RelayCommand ExportarExcelCommand { get; set; }
+
+        private string _lineaActual = "Todas"; // Para filtrar Arquitectónica/Especializada
+
+        public FamiliaViewModel(IDialogService dialogService, ISnackbarService snackbarService, BusinessLogicService businessLogic)
+        {
             _dialogService = dialogService;
             _snackbarService = snackbarService;
             _businessLogic = businessLogic;
 
             _reportesService = new ReportesService();
-            _catalogoService = new CatalogoService(_businessLogic);
+            _catalogoService = new CatalogoService(businessLogic);
             _sucursalesService = new SucursalesService();
 
             TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>();
             DetalleVentas = new ObservableCollection<VentaReporteModel>();
+            ResumenLineas = new ObservableCollection<LineaResumenModel>();
             _ventasProcesadas = new List<VentaReporteModel>();
 
             InicializarTarjetasVacias();
             CargarFiltrosIniciales();
 
             ActualizarCommand = new RelayCommand(o => EjecutarReporte());
-
-            VerDetalleCommand = new RelayCommand(param =>
-            {
-                if ( param is string familia ) CargarDetalle(familia);
-            });
-
+            VerDetalleCommand = new RelayCommand(param => { if ( param is string familia ) CargarDetalle(familia); });
             RegresarCommand = new RelayCommand(o => VerResumen = true);
             ExportarExcelCommand = new RelayCommand(o => GenerarReporteExcel());
-            _businessLogic = businessLogic;
         }
+        public void CargarPorLinea(string linea)
+        {
+            _lineaActual = linea;
+            if ( _ventasProcesadas.Any() ) GenerarResumenVisual();
+            else EjecutarReporte();
+        }    
         private void InicializarTarjetasVacias()
         {
             TarjetasFamilias.Clear();
@@ -198,19 +199,25 @@ namespace WPF_PAR.MVVM.ViewModels
             IsLoading = true;
             try
             {
-                var ventasRaw = await _reportesService.ObtenerVentasBrutas(
-                    AnioSeleccionado,
-                    SucursalSeleccionadaId.ToString(),
-                    MesSeleccionado
-                );
+                var ventasRaw = await _reportesService.ObtenerVentasBrutas(AnioSeleccionado, SucursalSeleccionadaId.ToString(), MesSeleccionado);
 
                 foreach ( var venta in ventasRaw )
                 {
                     var info = _catalogoService.ObtenerInfo(venta.Articulo);
-                    venta.Familia = info.FamiliaSimple;  
+
+                    venta.Familia = info.FamiliaSimple;
                     venta.LitrosUnitarios = info.Litros;
-                    venta.Descripcion = string.IsNullOrEmpty(info.Descripcion) ? venta.Articulo : info.Descripcion;
+
+                    // IMPORTANTE: Asignamos la Linea para poder agrupar en el detalle
+                    venta.Linea = string.IsNullOrEmpty(info.Linea) ? "Otras" : info.Linea;
+
+                    // CORRECCIÓN DESCRIPCIÓN:
+                    if ( !string.IsNullOrEmpty(info.Descripcion) )
+                        venta.Descripcion = info.Descripcion;
+                    else
+                        venta.Descripcion = "(Sin descripción disponible)";
                 }
+
                 _ventasProcesadas = ventasRaw;
                 GenerarResumenVisual();
                 VerResumen = true;
@@ -221,7 +228,7 @@ namespace WPF_PAR.MVVM.ViewModels
             }
             finally
             {
-                IsLoading = false; 
+                IsLoading = false;
             }
         }
         private void GenerarResumenVisual()
@@ -229,96 +236,99 @@ namespace WPF_PAR.MVVM.ViewModels
             TarjetasFamilias.Clear();
             if ( _ventasProcesadas.Count == 0 )
             {
-                //InicializarTarjetasVacias();
                 return;
             }
-            var grupos = _ventasProcesadas.GroupBy(x => x.Familia).ToList();
-
             var familiasOrdenadas = ObtenerFamiliasBase();
-
             var listaFinal = new List<FamiliaResumenModel>();
+            var grupos = _ventasProcesadas.GroupBy(x => x.Familia).ToList();
+            var familiasBase = ObtenerFamiliasBase();
 
-            List<string> familiasA_Mostrar;
-
-            if ( _lineaActual == "Arquitectonica" )
-                familiasA_Mostrar = ConfiguracionLineas.Arquitectonica;
-            else if ( _lineaActual == "Especializada" )
-                familiasA_Mostrar = ConfiguracionLineas.Especializada;
-            else
-                familiasA_Mostrar = ObtenerFamiliasBase();
-
-                foreach ( var nombreFamilia in familiasA_Mostrar )
-                {
-                    var grupoDatos = grupos.FirstOrDefault(g => g.Key == nombreFamilia);
-
-                    if ( grupoDatos != null )
-                    {
-                        listaFinal.Add(CrearTarjetaConDatos(grupoDatos));
-                    }
-                    else
-                    {
-                        string color = _businessLogic.ObtenerColorFamilia(nombreFamilia);
-                        listaFinal.Add(new FamiliaResumenModel
-                        {
-                            NombreFamilia = nombreFamilia,
-                            VentaTotal = 0,
-                            LitrosTotales = 0,
-                            MejorCliente = "---",
-                            ProductoEstrella = "---",
-                            ColorFondo = color,
-                            ColorTexto = ColorHelper.ObtenerColorTextto(color)
-                        });
-                    }
-                }
-
-            foreach ( var grupo in grupos )
+            foreach ( var familia in familiasBase )
             {
-                if ( !familiasOrdenadas.Contains(grupo.Key) )
+                var grupo = grupos.FirstOrDefault(g => g.Key == familia);
+                string color = _businessLogic.ObtenerColorFamilia(familia);
+
+                if ( grupo != null )
                 {
-                    listaFinal.Add(CrearTarjetaConDatos(grupo));
+                    // Calcular tops
+                    var topCliente = grupo.GroupBy(x => x.Cliente).OrderByDescending(g => g.Sum(v => v.TotalVenta)).FirstOrDefault();
+                    var topProd = grupo.GroupBy(x => x.Descripcion).OrderByDescending(g => g.Sum(v => v.LitrosTotales)).FirstOrDefault();
+
+                    TarjetasFamilias.Add(new FamiliaResumenModel
+                    {
+                        NombreFamilia = familia,
+                        VentaTotal = grupo.Sum(x => x.TotalVenta),
+                        LitrosTotales = grupo.Sum(x => x.LitrosTotales),
+                        ColorFondo = color,
+                        ColorTexto = ColorHelper.ObtenerColorTextto(color),
+                        MejorCliente = topCliente?.Key ?? "---",
+                        ProductoEstrella = topProd != null ? $"{topProd.Key}" : "---"
+                    });
+                }
+                else
+                {
+                    // Tarjeta vacía
+                    TarjetasFamilias.Add(new FamiliaResumenModel { NombreFamilia = familia, ColorFondo = color, ColorTexto = ColorHelper.ObtenerColorTextto(color), VentaTotal = 0, LitrosTotales = 0, MejorCliente = "---", ProductoEstrella = "---" });
                 }
             }
-
-            TarjetasFamilias.Clear();
-            foreach ( var item in listaFinal ) TarjetasFamilias.Add(item);
-        }
-        private FamiliaResumenModel CrearTarjetaConDatos(IGrouping<string, VentaReporteModel> grupo)
-        {
-            var topCliente = grupo.GroupBy(g => g.Cliente)
-                                  .OrderByDescending(z => z.Sum(v => v.TotalVenta))
-                                  .FirstOrDefault();
-
-            var topProducto = grupo.GroupBy(g => g.Descripcion)
-                                   .Select(g => new { Nombre = g.Key, Litros = g.Sum(x => x.LitrosTotales) })
-                                   .OrderByDescending(x => x.Litros)
-                                   .FirstOrDefault();
-
-            string textoProd = topProducto != null ? $"{topProducto.Nombre} ({topProducto.Litros:N0} Lts)" : "N/A";
-            string colorFondo = _businessLogic.ObtenerColorFamilia(grupo.Key);
-
-            return new FamiliaResumenModel
-            {
-                NombreFamilia = grupo.Key,
-                VentaTotal = grupo.Sum(x => x.TotalVenta),
-                LitrosTotales = grupo.Sum(x => x.LitrosTotales),
-                MejorCliente = topCliente?.Key ?? "Desconocido",
-                ProductoEstrella = textoProd,
-                ColorFondo = colorFondo,
-                ColorTexto = ColorHelper.ObtenerColorTextto(colorFondo)
-            };
         }
         private void CargarDetalle(string familia)
         {
-            TituloDetalle = $"Detalle: {familia}";
+            TituloDetalle = $"{familia}";
 
+            // 1. Filtrar los datos crudos para la tabla
             var filtrado = _ventasProcesadas
                            .Where(x => x.Familia == familia)
-                           .OrderByDescending(x => x.TotalVenta);
+                           .OrderByDescending(x => x.TotalVenta)
+                           .ToList();
 
             DetalleVentas = new ObservableCollection<VentaReporteModel>(filtrado);
-            OnPropertyChanged(nameof(DetalleVentas));
 
+            // 2. Calcular Resumen por LÍNEA (El "Dashboard" interno)
+            CalcularResumenPorLineas(filtrado);
+
+            // 3. Cambiar vista
             VerResumen = false;
+        }
+        private void CalcularResumenPorLineas(List<VentaReporteModel> ventasFamilia)
+        {
+            // 1. Agrupar por LÍNEA (Ej: "Esmalte Secado Rapido")
+            var gruposLinea = ventasFamilia
+                .GroupBy(x => x.Linea)
+                .Select(g => new LineaResumenModel
+                {
+                    NombreLinea = g.Key,
+                    VentaTotal = g.Sum(x => x.TotalVenta),
+                    LitrosTotales = g.Sum(x => x.LitrosTotales),
+                    // Calculamos el producto más vendido de esa línea
+                    ProductoTop = g.GroupBy(p => p.Descripcion)
+                                   .OrderByDescending(gp => gp.Sum(v => v.LitrosTotales))
+                                   .FirstOrDefault()?.Key ?? "Sin datos"
+                })
+                .OrderByDescending(x => x.VentaTotal)
+                .ToList();
+
+            ResumenLineas = new ObservableCollection<LineaResumenModel>(gruposLinea);
+
+            // 2. Generar Gráfico (Top 5 Líneas para no saturar)
+            var top5 = gruposLinea.Take(5).ToList();
+
+            SeriesDetalle = top5.Select(x => new PieSeries<decimal>
+            {
+                Values = new decimal[] { x.VentaTotal },
+                Name = x.NombreLinea,
+                DataLabelsPaint = new SolidColorPaint(SKColors.White),
+                DataLabelsSize = 10,
+                DataLabelsPosition = ( LiveChartsCore.Measure.PolarLabelsPosition )  LiveChartsCore.Measure.DataLabelsPosition.Middle ,
+
+                // --- CORRECCIÓN AQUÍ ---
+                // Usamos p.Model porque el "Modelo" es el decimal mismo.
+                DataLabelsFormatter = p => $"{p.Model:C0}"
+                // -----------------------
+
+            }).ToArray();
+
+            OnPropertyChanged(nameof(SeriesDetalle));
         }
         private void GenerarReporteExcel()
         {
@@ -362,41 +372,24 @@ namespace WPF_PAR.MVVM.ViewModels
         }
         private List<string> ObtenerFamiliasBase()
         {
-            switch ( _lineaActual )
-            {
-                case "Arquitectonica":
-                    return ConfiguracionLineas.Arquitectonica;
-                case "Especializada":
-                    return ConfiguracionLineas.Especializada;
-
-                default:
-                    return ConfiguracionLineas.ObtenerTodas();
-            }
+            // (Tu implementación existente que usa ConfiguracionLineas)
+            if ( _lineaActual == "Arquitectonica" ) return ConfiguracionLineas.Arquitectonica;
+            if ( _lineaActual == "Especializada" ) return ConfiguracionLineas.Especializada;
+            return ConfiguracionLineas.ObtenerTodas();
         }
         private void FiltrarTabla()
         {
             if ( DetalleVentas == null ) return;
-
             ICollectionView view = CollectionViewSource.GetDefaultView(DetalleVentas);
-
-            if ( string.IsNullOrWhiteSpace(TextoBusqueda) )
-            {
-                view.Filter = null; 
-            }
-            else
-            {
-                view.Filter = (obj) =>
-                {
-                    var venta = obj as VentaReporteModel;
-                    if ( venta == null ) return false;
-
-                    string texto = TextoBusqueda.ToUpper();
-                    return ( venta.Cliente != null && venta.Cliente.ToUpper().Contains(texto) ) ||
-                           ( venta.MovID != null && venta.MovID.Contains(texto) ) ||
-                           ( venta.Articulo != null && venta.Articulo.Contains(texto) ) ||
-                           ( venta.Descripcion != null && venta.Descripcion.ToUpper().Contains(texto) );
-                };
-            }
+            if ( string.IsNullOrWhiteSpace(TextoBusqueda) ) view.Filter = null;
+            else view.Filter = (obj) => {
+                var v = obj as VentaReporteModel;
+                if ( v == null ) return false;
+                string t = TextoBusqueda.ToUpper();
+                return ( v.Cliente?.ToUpper().Contains(t) ?? false ) ||
+                       ( v.Descripcion?.ToUpper().Contains(t) ?? false ) ||
+                       ( v.Linea?.ToUpper().Contains(t) ?? false ); // Agregamos búsqueda por Línea
+            };
         }
     }
 }
