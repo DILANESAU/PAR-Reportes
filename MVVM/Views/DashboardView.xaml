@@ -47,38 +47,6 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <materialDesign:Card Grid.Row="0" Margin="0,0,0,25" Padding="15" UniformCornerRadius="8">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
-                        <materialDesign:PackIcon Kind="FilterVariant" VerticalAlignment="Center" Margin="0,0,10,0" Width="24" Height="24" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                        <TextBlock Text="Filtros de Análisis" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="16" Margin="0,0,30,0"/>
-
-                        <ComboBox materialDesign:HintAssist.Hint="Sucursal" Width="220" Margin="0,0,20,0"
-                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                  ItemsSource="{Binding ListaSucursales}"
-                                  DisplayMemberPath="Value"
-                                  SelectedValuePath="Key"
-                                  SelectedValue="{Binding SucursalSeleccionadaId}"/>
-
-                        <ComboBox materialDesign:HintAssist.Hint="Año" Width="100" Margin="0,0,20,0"
-                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                  ItemsSource="{Binding ListaAnios}"
-                                  SelectedItem="{Binding AnioSeleccionado}"/>
-
-                        <ComboBox materialDesign:HintAssist.Hint="Mes" Width="140" Margin="0,0,20,0"
-                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                  ItemsSource="{Binding ListaMeses}"
-                                  DisplayMemberPath="Value"
-                                  SelectedValuePath="Key"
-                                  SelectedValue="{Binding MesSeleccionado}"/>
-
-                        <Button Content="Actualizar Datos" 
-                                Command="{Binding ActualizarCommand}"
-                                Style="{StaticResource MaterialDesignRaisedButton}"
-                                Height="40" Margin="10,0,0,0"
-                                materialDesign:ButtonAssist.CornerRadius="5"/>
-                    </StackPanel>
-                </materialDesign:Card>
-
                 <Grid Grid.Row="1" Margin="0,0,0,30">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>

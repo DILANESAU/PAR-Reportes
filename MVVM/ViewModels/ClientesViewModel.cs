@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Text;
+using System.Linq;
 
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
@@ -13,84 +13,46 @@ namespace WPF_PAR.MVVM.ViewModels
     public class ClientesViewModel : ObservableObject
     {
         private readonly ClientesService _clientesService;
-        private readonly SucursalesService _sucursalesService;
         private readonly IDialogService _dialogService;
         private readonly FilterService _filters;
 
         public ObservableCollection<ClienteRankingModel> ListaClientes { get; set; }
         private List<ClienteRankingModel> _datosOriginales;
 
-        // --- FILTROS PROFESIONALES ---
-        public Dictionary<int, string> ListaSucursales { get; set; }
-
-        private int _sucursalSeleccionadaId;
-        public int SucursalSeleccionadaId
+        // --- KPIs ---
+        private int _clientesEnRiesgo;
+        public int ClientesEnRiesgo
         {
-            get => _sucursalSeleccionadaId;
-            set { _sucursalSeleccionadaId = value; OnPropertyChanged(); }
+            get => _clientesEnRiesgo;
+            set { _clientesEnRiesgo = value; OnPropertyChanged(); }
         }
-
-        private DateTime _fechaInicio;
-        public DateTime FechaInicio
-        {
-            get => _fechaInicio;
-            set { _fechaInicio = value; OnPropertyChanged(); }
-        }
-
-        private DateTime _fechaFin;
-        public DateTime FechaFin
-        {
-            get => _fechaFin;
-            set { _fechaFin = value; OnPropertyChanged(); }
-        }
-        // -----------------------------
 
         private bool _isLoading;
-        public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set { _isLoading = value; OnPropertyChanged(); }
+        }
 
-        public RelayCommand ActualizarCommand { get; set; }
+        // --- COMANDOS ---
         public RelayCommand OrdenarMejoresCommand { get; set; }
         public RelayCommand OrdenarPeoresCommand { get; set; }
 
-        public ClientesViewModel(IDialogService dialogService , FilterService filters)
+        public ClientesViewModel(IDialogService dialogService, FilterService filterService)
         {
             _clientesService = new ClientesService();
-            _sucursalesService = new SucursalesService();
             _dialogService = dialogService;
-            _filters = filters;
-
-
+            _filters = filterService;
 
             ListaClientes = new ObservableCollection<ClienteRankingModel>();
 
-            // Inicializar Filtros
-            ConfigurarFiltros();
-
-            ActualizarCommand = new RelayCommand(o => CargarDatos());
             OrdenarMejoresCommand = new RelayCommand(o => AplicarOrden("MEJORES"));
             OrdenarPeoresCommand = new RelayCommand(o => AplicarOrden("RIESGO"));
 
+            // Suscripción al filtro global
             _filters.OnFiltrosCambiados += CargarDatos;
-            // Carga inicial
+
             CargarDatos();
-
-        }
-
-        private void ConfigurarFiltros()
-        {
-            // Cargar Sucursales (Igual que en otros VMs)
-            var todas = _sucursalesService.CargarSucursales();
-            // Aquí podrías filtrar por permisos de usuario si quisieras
-            ListaSucursales = todas;
-
-            // Default: Sucursal guardada o la primera
-            int guardada = Properties.Settings.Default.SucursalDefaultId;
-            SucursalSeleccionadaId = ListaSucursales.ContainsKey(guardada) ? guardada : ListaSucursales.Keys.FirstOrDefault();
-
-            // Default Fechas: Del día 1 del mes actual hasta hoy
-            DateTime hoy = DateTime.Now;
-            FechaInicio = new DateTime(hoy.Year, hoy.Month, 1);
-            FechaFin = hoy;
         }
 
         public async void CargarDatos()
@@ -98,17 +60,23 @@ namespace WPF_PAR.MVVM.ViewModels
             IsLoading = true;
             try
             {
+                // Usamos filtro global (Rango exacto)
                 var datos = await _clientesService.ObtenerRankingClientes(
                     _filters.SucursalId,
                     _filters.FechaInicio,
                     _filters.FechaFin
                 );
 
+                _datosOriginales = datos;
+
+                // KPI: Clientes que han bajado su compra vs año anterior
+                ClientesEnRiesgo = datos.Count(c => c.Diferencia < 0);
+
                 AplicarOrden("MEJORES");
             }
             catch ( Exception ex )
             {
-                _dialogService.ShowError("Error al consultar clientes: " + ex.Message, "Error");
+                _dialogService.ShowError("Error cargando clientes: " + ex.Message, "Error");
             }
             finally
             {
@@ -119,11 +87,20 @@ namespace WPF_PAR.MVVM.ViewModels
         private void AplicarOrden(string tipo)
         {
             if ( _datosOriginales == null ) return;
-            ListaClientes.Clear();
 
-            var ordenados = tipo == "RIESGO"
-                ? _datosOriginales.OrderBy(c => c.Diferencia).ToList()
-                : _datosOriginales.OrderByDescending(c => c.VentaActual).ToList();
+            ListaClientes.Clear();
+            List<ClienteRankingModel> ordenados;
+
+            if ( tipo == "RIESGO" )
+            {
+                // Ordenar por diferencia ascendente (los más negativos primero)
+                ordenados = _datosOriginales.OrderBy(c => c.Diferencia).ToList();
+            }
+            else
+            {
+                // Ordenar por venta actual descendente (los mejores primero)
+                ordenados = _datosOriginales.OrderByDescending(c => c.VentaActual).ToList();
+            }
 
             foreach ( var c in ordenados ) ListaClientes.Add(c);
         }

@@ -1,8 +1,15 @@
-﻿using LiveChartsCore;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+
+using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
+
 using SkiaSharp;
-using System.Collections.ObjectModel;
+
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
@@ -13,153 +20,177 @@ namespace WPF_PAR.MVVM.ViewModels
     public class DashboardViewModel : ObservableObject
     {
         private readonly VentasServices _ventasService;
-        private readonly SucursalesService _sucursalesService;
-        private List<VentasModel> _datosMemoria;
         private readonly IDialogService _dialogService;
-        private decimal _totalVentas;
         private readonly FilterService _filters;
+
+        // --- PROPIEDADES DE DATOS ---
+        private decimal _totalVentas;
         public decimal TotalVentas
         {
-            get { return _totalVentas; }
+            get => _totalVentas;
             set { _totalVentas = value; OnPropertyChanged(); }
         }
+
         private int _cantidadTransacciones;
         public int CantidadTransacciones
         {
-            get { return _cantidadTransacciones; }
+            get => _cantidadTransacciones;
             set { _cantidadTransacciones = value; OnPropertyChanged(); }
         }
+
         private string _topCliente;
         public string TopCliente
         {
-            get { return _topCliente; }
+            get => _topCliente;
             set { _topCliente = value; OnPropertyChanged(); }
         }
+
         private bool _isLoading;
         public bool IsLoading
         {
             get => _isLoading;
-            set
-            {
-                _isLoading = value;
-                OnPropertyChanged();
-            }
+            set { _isLoading = value; OnPropertyChanged(); }
         }
-        private ObservableCollection<VentasModel> _listaVentas;
-        public ObservableCollection<VentasModel> ListaVentas
-        {
-            get { return _listaVentas; }
-            set { _listaVentas = value; OnPropertyChanged(); }
-        }
-        public Dictionary<int, string> ListaSucursales { get; set; }
-        private int _sucursalSeleccionadaId;
-        public int SucursalSeleccionadaId
-        {
-            get => _sucursalSeleccionadaId;
-            set { _sucursalSeleccionadaId = value; OnPropertyChanged(); }
-        }
-        public ObservableCollection<int> ListaAnios { get; set; }
-        private int _anioSeleccionado;
-        public int AnioSeleccionado
-        {
-            get => _anioSeleccionado;
-            set { _anioSeleccionado = value; OnPropertyChanged(); }
-        }
-        public Dictionary<int, string> ListaMeses { get; set; }
-        private int _mesSeleccionado;
-        public int MesSeleccionado
-        {
-            get => _mesSeleccionado;
-            set { _mesSeleccionado = value; OnPropertyChanged(); }
-        }
-        public RelayCommand ActualizarCommand { get; set; }
-        public DashboardViewModel(IDialogService dialogService, FilterService filterService)
-        {
-            _dialogService = dialogService;
 
-            _ventasService = new VentasServices();
-            _sucursalesService = new SucursalesService();
-            _filters = filterService;
-            ListaVentas = new ObservableCollection<VentasModel>();
-            _filters.OnFiltrosCambiados += CargarDatos;
-            ActualizarCommand = new RelayCommand(o => CargarDatos());
+        // --- COLECCIONES Y GRÁFICOS ---
+        public ObservableCollection<VentasModel> ListaVentas { get; set; }
 
-            CargarFiltrosIniciales();
-            CargarDatos();
-        }
         public ISeries[] SeriesGrafico { get; set; }
         public Axis[] EjeX { get; set; }
         public Axis[] EjeY { get; set; }
+
         public ISeries[] SeriesHistorico { get; set; }
         public Axis[] EjeXHistorico { get; set; }
-        private void CargarFiltrosIniciales()
+
+        public RelayCommand ActualizarCommand { get; set; }
+
+        // --- CONSTRUCTOR ---
+        public DashboardViewModel(IDialogService dialogService, FilterService filterService)
         {
-            ListaAnios = new ObservableCollection<int> { 2023, 2024, 2025 };
-            AnioSeleccionado = DateTime.Now.Year;
-            ListaMeses = new Dictionary<int, string>
-            {
-                {1, "Enero"}, {2, "Febrero"}, {3, "Marzo"}, {4, "Abril"},
-                {5, "Mayo"}, {6, "Junio"}, {7, "Julio"}, {8, "Agosto"},
-                {9, "Septiembre"}, {10, "Octubre"}, {11, "Noviembre"}, {12, "Diciembre"}
-            };
-            MesSeleccionado = DateTime.Now.Month;
+            _dialogService = dialogService;
+            _filters = filterService;
 
-            var todasLasSucursales = _sucursalesService.CargarSucursales();
+            _ventasService = new VentasServices();
+            ListaVentas = new ObservableCollection<VentasModel>();
 
-            if ( Session.UsuarioActual.SucursalesPermitidas == null || Session.UsuarioActual.SucursalesPermitidas.Count == 0 )
-            {
-                ListaSucursales = todasLasSucursales;
-            }
-            else
-            {
-                ListaSucursales = todasLasSucursales
-                    .Where(x => Session.UsuarioActual.SucursalesPermitidas.Contains(x.Key))
-                    .ToDictionary(x => x.Key, x => x.Value);
-            }
+            // Suscribirse al filtro global
+            _filters.OnFiltrosCambiados += CargarDatos;
 
-            int sucursalGuardada = Properties.Settings.Default.SucursalDefaultId;
+            ActualizarCommand = new RelayCommand(o => CargarDatos());
 
-            if ( ListaSucursales.ContainsKey(sucursalGuardada) )
-            {
-                SucursalSeleccionadaId = sucursalGuardada;
-            }
-            else if ( ListaSucursales.Count > 0 )
-            {
-                SucursalSeleccionadaId = ListaSucursales.Keys.First();
-            }
+            // Carga inicial
+            CargarDatos();
         }
+
         public async void CargarDatos()
         {
             IsLoading = true;
             try
             {
-                var datos = await _ventasService.ObtenerVentasRangoAsync(_filters.SucursalId, _filters.FechaInicio, _filters.FechaFin);
-                _datosMemoria = datos;
+                // 1. Obtener Ventas del Rango (Diario/Tabla)
+                var datosRango = await _ventasService.ObtenerVentasRangoAsync(
+                    _filters.SucursalId,
+                    _filters.FechaInicio,
+                    _filters.FechaFin
+                );
 
-                ListaVentas = new ObservableCollection<VentasModel>(_datosMemoria);
+                ListaVentas = new ObservableCollection<VentasModel>(datosRango);
 
-                CalcularResumen();
+                CalcularResumen(datosRango);
+                ConfigurarGraficoDiario(datosRango);
 
-                ConfigurarGrafico();
+                // 2. Obtener Histórico Anual (Usando el año de la fecha fin)
+                var datosAnuales = await _ventasService.ObtenerVentaAnualAsync(
+                    _filters.SucursalId,
+                    _filters.FechaFin.Year
+                );
 
-                var datosAnuales = await _ventasService.ObtenerVentaAnualAsync(_filters.SucursalId, _filters.FechaFin.Year);
                 ConfigurarGraficoHistorico(datosAnuales);
             }
             catch ( Exception ex )
             {
-                _dialogService.ShowError($"Error al cargar datos: {ex.Message}", "Error de Conexión");
+                _dialogService.ShowError($"Error al cargar dashboard: {ex.Message}", "Error de Conexión");
             }
             finally
             {
                 IsLoading = false;
             }
         }
+
+        private void CalcularResumen(List<VentasModel> datos)
+        {
+            if ( datos == null || !datos.Any() )
+            {
+                TotalVentas = 0;
+                CantidadTransacciones = 0;
+                TopCliente = "Sin datos";
+                return;
+            }
+
+            TotalVentas = datos.Sum(x => x.PrecioTotal);
+            CantidadTransacciones = datos.Count;
+
+            var mejorCliente = datos
+                                .GroupBy(x => x.Cliente)
+                                .Select(g => new { Cliente = g.Key, Total = g.Sum(x => x.PrecioTotal) })
+                                .OrderByDescending(g => g.Total)
+                                .FirstOrDefault();
+
+            TopCliente = mejorCliente != null ? mejorCliente.Cliente : "N/A";
+        }
+
+        private void ConfigurarGraficoDiario(List<VentasModel> datos)
+        {
+            var ventasPorDia = datos
+                .GroupBy(x => x.Fecha.Day)
+                .OrderBy(g => g.Key)
+                .Select(g => new { Dia = g.Key, Monto = g.Sum(x => x.PrecioTotal) })
+                .ToList();
+
+            if ( ventasPorDia.Count == 0 )
+            {
+                SeriesGrafico = Array.Empty<ISeries>();
+            }
+            else
+            {
+                SeriesGrafico = new ISeries[]
+                {
+                    new ColumnSeries<decimal>
+                    {
+                        Name = "Ventas",
+                        Values = ventasPorDia.Select(x => x.Monto).ToArray(),
+                        Fill = new SolidColorPaint(SKColors.CornflowerBlue),
+                        Rx = 6, Ry = 6,
+                        DataLabelsSize = 12,
+                        DataLabelsPaint = new SolidColorPaint(SKColors.Gray),
+                        DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Top,
+                        DataLabelsFormatter = (point) => point.Model.ToString("C0"),
+                        XToolTipLabelFormatter = (point) => $"{point.Model:C2}"
+                    }
+                };
+            }
+
+            EjeX = new Axis[]
+            {
+                new Axis { Labels = ventasPorDia.Select(x => x.Dia.ToString()).ToArray(), Name = "Día" }
+            };
+
+            EjeY = new Axis[]
+            {
+                new Axis { Labeler = value => value.ToString("C0"), ShowSeparatorLines = true }
+            };
+
+            OnPropertyChanged(nameof(SeriesGrafico));
+            OnPropertyChanged(nameof(EjeX));
+            OnPropertyChanged(nameof(EjeY));
+        }
+
         private void ConfigurarGraficoHistorico(List<VentasModel> datosAnuales)
         {
-            // Preparamos los 12 meses (rellenando con 0 si no hubo ventas ese mes)
             var valores = new decimal[12];
             var meses = new string[] { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
 
+            // Mapeamos los datos (Asumiendo que 'Mov' trae el número de mes 1-12)
             foreach ( var item in datosAnuales )
             {
                 if ( int.TryParse(item.Mov, out int mes) && mes >= 1 && mes <= 12 )
@@ -170,110 +201,25 @@ namespace WPF_PAR.MVVM.ViewModels
 
             SeriesHistorico = new ISeries[]
             {
-        new LineSeries<decimal>
-        {
-            Name = "Venta Mensual",
-            Values = valores,
-            Fill = new SolidColorPaint(SKColors.CornflowerBlue.WithAlpha(50)), // Relleno transparente
-            Stroke = new SolidColorPaint(SKColors.CornflowerBlue) { StrokeThickness = 4 },
-            GeometrySize = 10,
-            GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 3 },
-            XToolTipLabelFormatter = (p) => $"{p.Model:C0}"
-        }
+                new LineSeries<decimal>
+                {
+                    Name = "Venta Mensual",
+                    Values = valores,
+                    Fill = new SolidColorPaint(SKColors.CornflowerBlue.WithAlpha(50)),
+                    Stroke = new SolidColorPaint(SKColors.CornflowerBlue) { StrokeThickness = 4 },
+                    GeometrySize = 10,
+                    GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 3 },
+                    XToolTipLabelFormatter = (p) => $"{p.Model:C0}"
+                }
             };
 
             EjeXHistorico = new Axis[]
             {
-        new Axis { Labels = meses, LabelsPaint = new SolidColorPaint(SKColors.Gray) }
+                new Axis { Labels = meses, LabelsPaint = new SolidColorPaint(SKColors.Gray) }
             };
 
             OnPropertyChanged(nameof(SeriesHistorico));
             OnPropertyChanged(nameof(EjeXHistorico));
         }
-        private void CalcularResumen()
-        {
-            if ( _datosMemoria == null || !_datosMemoria.Any() )
-            {
-                TotalVentas = 0;
-                CantidadTransacciones = 0;
-                TopCliente = "Sin datos";
-                return;
-            }
-
-            TotalVentas = _datosMemoria.Sum(x => x.PrecioTotal);
-            CantidadTransacciones = _datosMemoria.Count;
-
-            var mejorCliente = _datosMemoria
-                                .GroupBy(x => x.Cliente)
-                                .Select(g => new { Cliente = g.Key, Total = g.Sum(x => x.PrecioTotal) })
-                                .OrderByDescending(g => g.Total)
-                                .FirstOrDefault();
-
-            TopCliente = mejorCliente != null ? mejorCliente.Cliente : "N/A";
-        }
-        private void ConfigurarGrafico()
-        {
-            var ventasPorDia = _datosMemoria
-                .GroupBy(x => x.Fecha.Day)
-                .OrderBy(g => g.Key)
-                .Select(g => new { Dia = g.Key, Monto = g.Sum(x => x.PrecioTotal) })
-                .ToList();
-
-            if ( ventasPorDia.Count == 0 )
-            {
-                SeriesGrafico = Array.Empty<ISeries>();
-                OnPropertyChanged(nameof(SeriesGrafico));
-                return;
-            }
-
-            SeriesGrafico =
-            [
-                new ColumnSeries<decimal>
-                {
-                   Name = "Ventas",
-                    Values = ventasPorDia.Select(x => x.Monto).ToArray(),
-                    
-                    Fill = new SolidColorPaint(SKColors.CornflowerBlue),
-                    
-                    Rx = 10,
-                    Ry = 10,
-
-                    DataLabelsSize = 12,
-                    DataLabelsPaint = new SolidColorPaint(SKColors.Gray),
-                    DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Top,
-                    
-                    DataLabelsFormatter = (point) => point.Model.ToString("C0"),
-
-                    YToolTipLabelFormatter = (chartPoint) => $"{chartPoint.Model:C2}"
-                }
-            ];
-
-            EjeX = new Axis[]
-            {
-                new Axis
-                {
-                   Labels = ventasPorDia.Select(x => x.Dia.ToString()).ToArray(),
-                   Name = "Día del Mes",
-                   LabelsPaint = new SolidColorPaint(SKColors.Gray),
-                   TextSize = 12
-                }
-            };
-
-            EjeY = new Axis[]
-            {
-                new Axis
-                {
-                    Labeler = value => value.ToString("C0"),
-                    LabelsPaint = new SolidColorPaint(SKColors.Gray),
-                    TextSize = 12,
-                    ShowSeparatorLines = true
-                }
-            };
-
-            OnPropertyChanged(nameof(SeriesGrafico));
-            OnPropertyChanged(nameof(EjeX));
-            OnPropertyChanged(nameof(EjeY));
-        }
     }
 }
-

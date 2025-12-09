@@ -19,38 +19,6 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <materialDesign:Card Grid.Row="0" Margin="0,0,0,25" Padding="20" UniformCornerRadius="10">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <materialDesign:PackIcon Kind="FilterVariant" VerticalAlignment="Center" Margin="0,0,10,0" 
-                                                 Foreground="{DynamicResource PrimaryHueMidBrush}" Width="25" Height="25"/>
-                        <TextBlock Text="Filtrar Resultados" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="16" Margin="0,0,30,0"/>
-
-                        <ComboBox materialDesign:HintAssist.Hint="Sucursal" Width="200" Margin="0,0,20,0"
-                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                  ItemsSource="{Binding ListaSucursales}"
-                                  DisplayMemberPath="Value"
-                                  SelectedValuePath="Key"
-                                  SelectedValue="{Binding SucursalSeleccionadaId}"/>
-
-                        <ComboBox materialDesign:HintAssist.Hint="Año" Width="100" Margin="0,0,20,0"
-                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                  ItemsSource="{Binding ListaAnios}"
-                                  SelectedItem="{Binding AnioSeleccionado}"/>
-
-                        <ComboBox materialDesign:HintAssist.Hint="Mes" Width="140" Margin="0,0,20,0"
-                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                  ItemsSource="{Binding ListaMeses}"
-                                  DisplayMemberPath="Value"
-                                  SelectedValuePath="Key"
-                                  SelectedValue="{Binding MesSeleccionado}"/>
-
-                        <Button Content="Consultar" Command="{Binding ActualizarCommand}"
-                                Style="{StaticResource MaterialDesignRaisedButton}"
-                                materialDesign:ButtonAssist.CornerRadius="5"
-                                Height="40" Padding="30,0" Margin="10,0,0,0"/>
-                    </StackPanel>
-                </materialDesign:Card>
-
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding TarjetasFamilias}">
                         <ItemsControl.ItemsPanel>
