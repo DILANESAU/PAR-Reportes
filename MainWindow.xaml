@@ -30,6 +30,9 @@
         <DataTemplate DataType="{x:Type vm:FamiliaViewModel}">
             <v:FamiliasView/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ClientesViewModel}">
+            <v:ClientesView/>
+        </DataTemplate>
 
         <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
             <Setter Property="Height" Value="50"/>
@@ -128,8 +131,15 @@
                                         Content="Ver Resumen"/>
                             </StackPanel>
                         </Expander>
+                        <Button Style="{StaticResource NavButton}" Command="{Binding ClienteViewCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Person" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                <TextBlock Text="Clientes" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </ScrollViewer>
+
 
                 <StackPanel Grid.Row="2" Margin="0,0,0,10">
                     <Separator Opacity="0.3"/>

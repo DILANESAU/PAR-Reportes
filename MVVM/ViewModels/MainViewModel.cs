@@ -12,11 +12,13 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand SettingsViewCommand {  get; set; }
         public RelayCommand DashboardViewCommand { get; set; }
         public RelayCommand FamiliaViewCommand { get; set; }
+        public RelayCommand ClienteViewCommand { get; set; }
         public RelayCommand NavegarLineaCommand {  get; set; }
 
         public SettingsViewModel SettingsVM { get; set; }
         public DashboardViewModel DashboardVM { get; set; }
         public FamiliaViewModel FamiliaVM { get; set; }
+        public ClientesViewModel ClienteVM { get; set; }
 
         private object _currentView;
         public object CurrentView
@@ -48,10 +50,11 @@ namespace WPF_PAR.MVVM.ViewModels
             DashboardVM = new DashboardViewModel(dialogService);
             SettingsVM = new SettingsViewModel(dialogService);
             FamiliaVM = new FamiliaViewModel(dialogService, snackbarService, businessLogic);
+            ClienteVM = new ClientesViewModel(dialogService);
 
             CurrentView = DashboardVM;
 
-            SettingsViewCommand = new (o =>
+            SettingsViewCommand = new(o =>
             {
                 CurrentView = SettingsVM;
             });
@@ -63,6 +66,10 @@ namespace WPF_PAR.MVVM.ViewModels
             FamiliaViewCommand = new(o =>
             {
                 CurrentView = FamiliaVM;
+            });
+            ClienteViewCommand = new(o =>
+            {
+                CurrentView = ClienteVM; 
             });
             NavegarLineaCommand = new(parametro =>
             {
