@@ -70,6 +70,7 @@ namespace WPF_PAR.MVVM.ViewModels
             OrdenarMejoresCommand = new RelayCommand(o => AplicarOrden("MEJORES"));
             OrdenarPeoresCommand = new RelayCommand(o => AplicarOrden("RIESGO"));
 
+            _filters.OnFiltrosCambiados += CargarDatos;
             // Carga inicial
             CargarDatos();
 
@@ -97,8 +98,11 @@ namespace WPF_PAR.MVVM.ViewModels
             IsLoading = true;
             try
             {
-                var datos = await _clientesService.ObtenerRankingClientes(SucursalSeleccionadaId, FechaInicio, FechaFin);
-                _datosOriginales = datos;
+                var datos = await _clientesService.ObtenerRankingClientes(
+                    _filters.SucursalId,
+                    _filters.FechaInicio,
+                    _filters.FechaFin
+                );
 
                 AplicarOrden("MEJORES");
             }

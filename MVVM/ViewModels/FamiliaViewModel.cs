@@ -19,7 +19,6 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class FamiliaViewModel : ObservableObject
     {
-        // Servicios
         private readonly ReportesService _reportesService;
         private readonly CatalogoService _catalogoService;
         private readonly SucursalesService _sucursalesService;
@@ -27,7 +26,6 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly ISnackbarService _snackbarService;
         private readonly BusinessLogicService _businessLogic;
         private readonly FilterService _filters;
-        // Propiedades Principales
         private ObservableCollection<VentaReporteModel> _detalleVentas;
         public ObservableCollection<VentaReporteModel> DetalleVentas
         {
@@ -35,10 +33,9 @@ namespace WPF_PAR.MVVM.ViewModels
             set
             {
                 _detalleVentas = value;
-                OnPropertyChanged(); // ¡Esto es lo que faltaba! Avisa a la vista.
+                OnPropertyChanged(); 
             }
         }
-
         private ObservableCollection<FamiliaResumenModel> _tarjetasFamilias;
         public ObservableCollection<FamiliaResumenModel> TarjetasFamilias
         {
@@ -401,13 +398,11 @@ namespace WPF_PAR.MVVM.ViewModels
         {
             if ( DetalleVentas == null || DetalleVentas.Count == 0 )
             {
-                // REFACTORIZADO
                 _dialogService.ShowMessage("No hay datos para exportar.", "Aviso");
                 return;
             }
 
-            string nombreArchivo = $"Reporte_{SucursalSeleccionadaId}_{AnioSeleccionado}_{MesSeleccionado}_{TituloDetalle.Replace(":", "")}.csv";
-
+            string nombreArchivo = $"Reporte_{_filters.SucursalId}_{TituloDetalle.Replace(":", "")}.csv";
             string rutaGuardado = _dialogService.ShowSaveFileDialog("Archivo CSV (*.csv)|*.csv", nombreArchivo);
 
             if ( !string.IsNullOrEmpty(rutaGuardado) )
@@ -415,27 +410,36 @@ namespace WPF_PAR.MVVM.ViewModels
                 try
                 {
                     var sb = new StringBuilder();
+                    // Encabezados
                     sb.AppendLine("Fecha,Sucursal,Folio,Clave,Producto,Familia,Cliente,Cantidad,Litros Totales,Total Venta");
 
                     foreach ( var v in DetalleVentas )
                     {
-                        string cliente = v.Cliente?.Replace(",", " ") ?? "";
-                        string familia = v.Familia?.Replace(",", " ") ?? "";
-                        string desc = v.Descripcion?.Replace(",", " ") ?? "";
+                        // USAMOS EL LIMPIADOR AQUÍ:
+                        string producto = LimpiarParaCsv(v.Descripcion);
+                        string familia = LimpiarParaCsv(v.Familia);
+                        string cliente = LimpiarParaCsv(v.Cliente);
+                        string linea = LimpiarParaCsv(v.Linea);
 
-                        string linea = $"{v.FechaEmision:dd/MM/yyyy},{v.Sucursal},{v.MovID},{v.Articulo},{desc},{familia},{cliente},{v.Cantidad},{v.LitrosTotales},{v.TotalVenta}";
-                        sb.AppendLine(linea);
+                        // Nota: Fechas y números no necesitan limpieza usualmente
+                        string fila = $"{v.FechaEmision:dd/MM/yyyy},{v.Sucursal},{v.MovID},{v.Articulo},{producto},{familia},{cliente},{v.Cantidad},{v.LitrosTotales},{v.TotalVenta}";
+                        sb.AppendLine(fila);
                     }
 
                     File.WriteAllText(rutaGuardado, sb.ToString(), Encoding.UTF8);
-
-                    _snackbarService.Show("✅ Reporte exportado correctamente a Excel");
+                    _snackbarService.Show("✅ Reporte exportado correctamente");
                 }
-                catch ( Exception )
+                catch ( Exception ex )
                 {
-                    _snackbarService.Show("Hubo un error en el guardado del archivo");
+                    _dialogService.ShowError($"Error al exportar: {ex.Message}", "Error");
                 }
             }
+
+        }
+        private string LimpiarParaCsv(string texto)
+        {
+            if ( string.IsNullOrEmpty(texto) ) return "";
+            return $"\"{texto.Replace("\"", "\"\"")}\"";
         }
         private List<string> ObtenerFamiliasBase()
         {
