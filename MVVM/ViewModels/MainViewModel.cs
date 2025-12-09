@@ -10,11 +10,7 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class MainViewModel : ObservableObject
     {
-        // --- 1. SERVICIO DE FILTROS GLOBAL (El Jefe) ---
-        // Esta propiedad se enlaza a la barra superior de MainWindow.xaml
-        public FilterService GlobalFilters { get; set; }
-
-        // Lista de sucursales para el ComboBox global
+        public FilterService GlobalFilters { get; }
         public Dictionary<int, string> ListaSucursales { get; set; }
 
 
@@ -27,12 +23,10 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand NavegarLineaCommand { get; set; }
         public RelayCommand ToggleMenuCommand { get; set; }
 
-
-        // --- 3. VIEWMODELS HIJOS ---
-        public DashboardViewModel DashboardVM { get; set; }
-        public FamiliaViewModel FamiliaVM { get; set; }
-        public ClientesViewModel ClientesVM { get; set; } // Nuevo módulo
-        public SettingsViewModel SettingsVM { get; set; }
+        public DashboardViewModel DashboardVM { get; }
+        public FamiliaViewModel FamiliaVM { get; }
+        public ClientesViewModel ClientesVM { get; }
+        public SettingsViewModel SettingsVM { get; }
 
 
         // --- 4. ESTADO DE LA VISTA ---
@@ -52,47 +46,27 @@ namespace WPF_PAR.MVVM.ViewModels
 
 
         // --- CONSTRUCTOR ---
-        public MainViewModel()
+        public MainViewModel(FilterService filterService,
+        SucursalesService sucursalesService,
+        DashboardViewModel dashboardVM,
+        FamiliaViewModel familiaVM,
+        ClientesViewModel clientesVM,
+        SettingsViewModel settingsVM)
         {
-            // A. CREAR SERVICIOS BASE (Infraestructura)
-            IDialogService dialogService = new DialogService();
-            ISnackbarService snackbarService = new SnackbarService();
-            BusinessLogicService businessLogic = new BusinessLogicService();
-            SucursalesService sucursalesService = new SucursalesService();
-
-
-            // B. INICIALIZAR EL SISTEMA DE FILTROS
-            GlobalFilters = new FilterService();
+            GlobalFilters = filterService;
+            DashboardVM = dashboardVM;
+            FamiliaVM = familiaVM;
+            ClientesVM = clientesVM;
+            SettingsVM = settingsVM;
 
             // Cargar sucursales para el combo global (respetando permisos si existieran)
             // Aquí podrías filtrar usando Session.UsuarioActual.SucursalesPermitidas si quisieras
             ListaSucursales = sucursalesService.CargarSucursales();
 
-
-            // C. INYECTAR DEPENDENCIAS A LOS HIJOS (Aquí ocurre la magia)
-            // Todos reciben la MISMA instancia de 'GlobalFilters'
-
-            DashboardVM = new DashboardViewModel(dialogService, GlobalFilters);
-
-            FamiliaVM = new FamiliaViewModel(dialogService, snackbarService, businessLogic, GlobalFilters);
-
-            ClientesVM = new ClientesViewModel(dialogService, GlobalFilters);
-
-            SettingsVM = new SettingsViewModel(dialogService);
-
-
             // D. CONFIGURAR COMANDOS
             DashboardViewCommand = new RelayCommand(o => CurrentView = DashboardVM);
-
-            FamiliaViewCommand = new RelayCommand(o =>
-            {
-                CurrentView = FamiliaVM;
-                // Opcional: Resetear a "Todas" al entrar directo
-                FamiliaVM.CargarPorLinea("Todas");
-            });
-
+            FamiliaViewCommand = new RelayCommand(o => { CurrentView = FamiliaVM; FamiliaVM.CargarPorLinea("Todas"); });
             ClientesViewCommand = new RelayCommand(o => CurrentView = ClientesVM);
-
             SettingsViewCommand = new RelayCommand(o => CurrentView = SettingsVM);
 
             // Navegación específica (desde el menú lateral "Arquitectónica", etc.)

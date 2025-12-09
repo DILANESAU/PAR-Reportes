@@ -16,10 +16,6 @@
         FontFamily="{DynamicResource MaterialDesignFont}"
         Background="{DynamicResource MaterialDesignPaper}">
 
-    <Window.DataContext>
-        <vm:MainViewModel/>
-    </Window.DataContext>
-
     <Window.Resources>
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <v:SettingsView/>
@@ -131,7 +127,7 @@
                                         Content="Ver Resumen"/>
                             </StackPanel>
                         </Expander>
-                        <Button Style="{StaticResource NavButton}" Command="{Binding ClienteViewCommand}">
+                        <Button Style="{StaticResource NavButton}" Command="{Binding ClientesViewCommand}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Person" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
                                 <TextBlock Text="Clientes" VerticalAlignment="Center"/>

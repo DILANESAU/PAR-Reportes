@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -44,14 +46,13 @@ namespace WPF_PAR
 
             if ( usuario != null )
             {
-                // 2. ÉXITO: Guardar sesión
                 Session.UsuarioActual = usuario;
 
-                // 3. Abrir la Ventana Principal
-                MainWindow main = new MainWindow();
-                main.Show();
+                // CAMBIO: Pedimos la MainWindow al contenedor de la App
+                // Esto crea MainWindow -> crea MainViewModel -> crea DashboardViewModel -> etc.
+                var mainWindow = ( ( App ) Application.Current ).Services.GetRequiredService<MainWindow>();
+                mainWindow.Show();
 
-                // 4. Cerrar Login
                 this.Close();
             }
             else

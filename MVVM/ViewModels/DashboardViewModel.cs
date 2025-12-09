@@ -65,12 +65,11 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand ActualizarCommand { get; set; }
 
         // --- CONSTRUCTOR ---
-        public DashboardViewModel(IDialogService dialogService, FilterService filterService)
+        public DashboardViewModel(VentasServices ventasService, IDialogService dialogService, FilterService filterService)
         {
             _dialogService = dialogService;
             _filters = filterService;
-
-            _ventasService = new VentasServices();
+            _ventasService = ventasService;
             ListaVentas = new ObservableCollection<VentasModel>();
 
             // Suscribirse al filtro global
