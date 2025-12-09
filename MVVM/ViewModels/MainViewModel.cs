@@ -9,6 +9,9 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class MainViewModel : ObservableObject
     {
+
+        public FilterService GlobalFilters { get; set; }
+        public Dictionary<int, string> ListaSucursales { get; set; }
         public RelayCommand SettingsViewCommand {  get; set; }
         public RelayCommand DashboardViewCommand { get; set; }
         public RelayCommand FamiliaViewCommand { get; set; }
@@ -43,14 +46,18 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand ToggleMenuCommand { get; set; }
         public MainViewModel()
         {
+  
             IDialogService dialogService = new DialogService();
             ISnackbarService snackbarService = new SnackbarService();
             BusinessLogicService businessLogic = new();
 
-            DashboardVM = new DashboardViewModel(dialogService);
+            var sucursalesService = new SucursalesService();
+            GlobalFilters = new FilterService();
+            ListaSucursales = sucursalesService.CargarSucursales();
+            DashboardVM = new DashboardViewModel(dialogService, GlobalFilters);
             SettingsVM = new SettingsViewModel(dialogService);
-            FamiliaVM = new FamiliaViewModel(dialogService, snackbarService, businessLogic);
-            ClienteVM = new ClientesViewModel(dialogService);
+            FamiliaVM = new FamiliaViewModel(dialogService, snackbarService, businessLogic, GlobalFilters);
+            ClienteVM = new ClientesViewModel(dialogService, GlobalFilters);
 
             CurrentView = DashboardVM;
 

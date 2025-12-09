@@ -161,16 +161,58 @@
         </materialDesign:DrawerHost.LeftDrawerContent>
 
         <DockPanel>
-            <materialDesign:ColorZone Padding="16"
-                                      Mode="PrimaryMid" DockPanel.Dock="Top">
-                <DockPanel>
-                    <ToggleButton Style="{StaticResource MaterialDesignHamburgerToggleButton}" 
-                                  IsChecked="{Binding IsMenuOpen}"
-                                  Width="30" Height="30"/>
+            <materialDesign:ColorZone Padding="10" Mode="PrimaryMid" DockPanel.Dock="Top">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20" FontWeight="Bold" 
-                               Text="PAR Reportes v1.0" Margin="16,0,0,0"/>
-                </DockPanel>
+                    <ToggleButton Style="{StaticResource MaterialDesignHamburgerToggleButton}" 
+                                  IsChecked="{Binding IsMenuOpen}" Width="30" Height="30"/>
+
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" 
+                               Text="PAR Reportes" Margin="16,0,0,0"/>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+
+                        <materialDesign:PackIcon Kind="Store" VerticalAlignment="Center" Margin="0,0,5,0" Opacity="0.8"/>
+                        <ComboBox Width="180" Margin="0,0,20,0"
+                                  ItemsSource="{Binding ListaSucursales}"
+                                  DisplayMemberPath="Value"
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding GlobalFilters.SucursalId}"
+                                  Style="{StaticResource MaterialDesignComboBox}"
+                                  Foreground="White"
+                                  materialDesign:HintAssist.Hint="Sucursal"
+                                  materialDesign:TextFieldAssist.UnderlineBrush="White"
+                                  materialDesign:HintAssist.Foreground="White"/>
+
+                        <materialDesign:PackIcon Kind="Calendar" VerticalAlignment="Center" Margin="0,0,5,0" Opacity="0.8"/>
+
+                        <DatePicker Width="110" Margin="0,0,10,0"
+                                    SelectedDate="{Binding GlobalFilters.FechaInicio}"
+                                    Language="es-MX"
+                                    Foreground="White"
+                                    materialDesign:TextFieldAssist.UnderlineBrush="White"/>
+
+                        <TextBlock Text=" a " VerticalAlignment="Center" Foreground="White" Opacity="0.8"/>
+
+                        <DatePicker Width="110" Margin="0,0,10,0"
+                                    SelectedDate="{Binding GlobalFilters.FechaFin}"
+                                    Language="es-MX"
+                                    Foreground="White"
+                                    materialDesign:TextFieldAssist.UnderlineBrush="White"/>
+
+                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                ToolTip="Recargar Datos" Margin="10,0,0,0">
+                            <materialDesign:PackIcon Kind="Refresh" Width="24" Height="24"/>
+                        </Button>
+
+                    </StackPanel>
+                </Grid>
             </materialDesign:ColorZone>
 
             <ContentControl Content="{Binding CurrentView}" Margin="10"/>

@@ -17,6 +17,7 @@ namespace WPF_PAR.MVVM.ViewModels
         private List<VentasModel> _datosMemoria;
         private readonly IDialogService _dialogService;
         private decimal _totalVentas;
+        private readonly FilterService _filters;
         public decimal TotalVentas
         {
             get { return _totalVentas; }
@@ -72,14 +73,15 @@ namespace WPF_PAR.MVVM.ViewModels
             set { _mesSeleccionado = value; OnPropertyChanged(); }
         }
         public RelayCommand ActualizarCommand { get; set; }
-        public DashboardViewModel(IDialogService dialogService)
+        public DashboardViewModel(IDialogService dialogService, FilterService filterService)
         {
             _dialogService = dialogService;
 
             _ventasService = new VentasServices();
             _sucursalesService = new SucursalesService();
+            _filters = filterService;
             ListaVentas = new ObservableCollection<VentasModel>();
-
+            _filters.OnFiltrosCambiados += CargarDatos;
             ActualizarCommand = new RelayCommand(o => CargarDatos());
 
             CargarFiltrosIniciales();
@@ -131,7 +133,8 @@ namespace WPF_PAR.MVVM.ViewModels
             IsLoading = true;
             try
             {
-                _datosMemoria = await _ventasService.ObtenerVentasAsync(SucursalSeleccionadaId, AnioSeleccionado, MesSeleccionado);
+                var datos = await _ventasService.ObtenerVentasRangoAsync(_filters.SucursalId, _filters.FechaInicio, _filters.FechaFin);
+                _datosMemoria = datos;
 
                 ListaVentas = new ObservableCollection<VentasModel>(_datosMemoria);
 
@@ -139,7 +142,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
                 ConfigurarGrafico();
 
-                var datosAnuales = await _ventasService.ObtenerVentaAnualAsync(SucursalSeleccionadaId, AnioSeleccionado);
+                var datosAnuales = await _ventasService.ObtenerVentaAnualAsync(_filters.SucursalId, _filters.FechaFin.Year);
                 ConfigurarGraficoHistorico(datosAnuales);
             }
             catch ( Exception ex )

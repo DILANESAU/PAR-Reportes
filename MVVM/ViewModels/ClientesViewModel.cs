@@ -15,6 +15,7 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly ClientesService _clientesService;
         private readonly SucursalesService _sucursalesService;
         private readonly IDialogService _dialogService;
+        private readonly FilterService _filters;
 
         public ObservableCollection<ClienteRankingModel> ListaClientes { get; set; }
         private List<ClienteRankingModel> _datosOriginales;
@@ -51,11 +52,14 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand OrdenarMejoresCommand { get; set; }
         public RelayCommand OrdenarPeoresCommand { get; set; }
 
-        public ClientesViewModel(IDialogService dialogService)
+        public ClientesViewModel(IDialogService dialogService , FilterService filters)
         {
             _clientesService = new ClientesService();
             _sucursalesService = new SucursalesService();
             _dialogService = dialogService;
+            _filters = filters;
+
+
 
             ListaClientes = new ObservableCollection<ClienteRankingModel>();
 
@@ -68,6 +72,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
             // Carga inicial
             CargarDatos();
+
         }
 
         private void ConfigurarFiltros()

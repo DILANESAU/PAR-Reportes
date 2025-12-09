@@ -26,7 +26,7 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly IDialogService _dialogService;
         private readonly ISnackbarService _snackbarService;
         private readonly BusinessLogicService _businessLogic;
-
+        private readonly FilterService _filters;
         // Propiedades Principales
         private ObservableCollection<VentaReporteModel> _detalleVentas;
         public ObservableCollection<VentaReporteModel> DetalleVentas
@@ -116,12 +116,12 @@ namespace WPF_PAR.MVVM.ViewModels
 
         private string _lineaActual = "Todas"; // Para filtrar Arquitectónica/Especializada
 
-        public FamiliaViewModel(IDialogService dialogService, ISnackbarService snackbarService, BusinessLogicService businessLogic)
+        public FamiliaViewModel(IDialogService dialogService, ISnackbarService snackbarService, BusinessLogicService businessLogic, FilterService filters)
         {
             _dialogService = dialogService;
             _snackbarService = snackbarService;
             _businessLogic = businessLogic;
-
+            _filters = filters;
             _reportesService = new ReportesService();
             _catalogoService = new CatalogoService(businessLogic);
             _sucursalesService = new SucursalesService();
@@ -133,11 +133,18 @@ namespace WPF_PAR.MVVM.ViewModels
 
             InicializarTarjetasVacias();
             CargarFiltrosIniciales();
+            _filters.OnFiltrosCambiados += () =>
+            {
+                // Si estamos en detalle y cambian filtros, volvemos al resumen para evitar datos inconsistentes
+                if ( !VerResumen ) VerResumen = true;
+                EjecutarReporte();
+            };
 
             ActualizarCommand = new RelayCommand(o => EjecutarReporte());
             VerDetalleCommand = new RelayCommand(param => { if ( param is string familia ) CargarDetalle(familia); });
             RegresarCommand = new RelayCommand(o => VerResumen = true);
             ExportarExcelCommand = new RelayCommand(o => GenerarReporteExcel());
+
         }
         public void CargarPorLinea(string linea)
         {
@@ -216,7 +223,11 @@ namespace WPF_PAR.MVVM.ViewModels
             IsLoading = true;
             try
             {
-                var ventasRaw = await _reportesService.ObtenerVentasBrutas(AnioSeleccionado, SucursalSeleccionadaId.ToString(), MesSeleccionado);
+                var ventasRaw = await _reportesService.ObtenerVentasBrutasRango(
+                     _filters.SucursalId,
+                     _filters.FechaInicio,
+                     _filters.FechaFin
+                 );
 
                 foreach ( var venta in ventasRaw )
                 {
