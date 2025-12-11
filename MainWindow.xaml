@@ -31,17 +31,19 @@
         </DataTemplate>
 
         <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
-            <Setter Property="Height" Value="50"/>
+            <Setter Property="Height" Value="45"/>
+            <Setter Property="Margin" Value="10,2"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Padding" Value="20,0,0,0"/>
+            <Setter Property="Padding" Value="15,0,0,0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}"/>
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="22"/>
+
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource PrimaryHueLightBrush}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightForegroundBrush}"/>
+                    <Setter Property="Background" Value="#15000000"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -171,43 +173,6 @@
 
                     <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" 
                                Text="PAR Reportes" Margin="16,0,0,0"/>
-
-                    <StackPanel Grid.Column="3" Orientation="Horizontal">
-
-                        <materialDesign:PackIcon Kind="Store" VerticalAlignment="Center" Margin="0,0,5,0" Opacity="0.8"/>
-                        <ComboBox Width="180" Margin="0,0,20,0"
-                                  ItemsSource="{Binding ListaSucursales}"
-                                  DisplayMemberPath="Value"
-                                  SelectedValuePath="Key"
-                                  SelectedValue="{Binding GlobalFilters.SucursalId}"
-                                  Style="{StaticResource MaterialDesignComboBox}"
-                                  Foreground="White"
-                                  materialDesign:HintAssist.Hint="Sucursal"
-                                  materialDesign:TextFieldAssist.UnderlineBrush="White"
-                                  materialDesign:HintAssist.Foreground="White"/>
-
-                        <materialDesign:PackIcon Kind="Calendar" VerticalAlignment="Center" Margin="0,0,5,0" Opacity="0.8"/>
-
-                        <DatePicker Width="110" Margin="0,0,10,0"
-                                    SelectedDate="{Binding GlobalFilters.FechaInicio}"
-                                    Language="es-MX"
-                                    Foreground="White"
-                                    materialDesign:TextFieldAssist.UnderlineBrush="White"/>
-
-                        <TextBlock Text=" a " VerticalAlignment="Center" Foreground="White" Opacity="0.8"/>
-
-                        <DatePicker Width="110" Margin="0,0,10,0"
-                                    SelectedDate="{Binding GlobalFilters.FechaFin}"
-                                    Language="es-MX"
-                                    Foreground="White"
-                                    materialDesign:TextFieldAssist.UnderlineBrush="White"/>
-
-                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                ToolTip="Recargar Datos" Margin="10,0,0,0">
-                            <materialDesign:PackIcon Kind="Refresh" Width="24" Height="24"/>
-                        </Button>
-
-                    </StackPanel>
                 </Grid>
             </materialDesign:ColorZone>
 

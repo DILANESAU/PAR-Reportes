@@ -28,7 +28,7 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly IDialogService _dialogService;
         private readonly ISnackbarService _snackbarService;
         private readonly BusinessLogicService _businessLogic;
-        private readonly FilterService _filters;
+        public readonly FilterService _filters;
 
         // --- COLECCIONES PRINCIPALES ---
         private ObservableCollection<FamiliaResumenModel> _tarjetasFamilias;

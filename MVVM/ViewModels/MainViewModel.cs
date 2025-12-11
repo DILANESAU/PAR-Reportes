@@ -17,7 +17,7 @@ namespace WPF_PAR.MVVM.ViewModels
         // --- 2. COMANDOS DE NAVEGACIÓN ---
         public RelayCommand DashboardViewCommand { get; set; }
         public RelayCommand FamiliaViewCommand { get; set; }
-        public RelayCommand ClientesViewCommand { get; set; } // Nuevo módulo
+        public RelayCommand ClientesViewCommand { get; set; } 
         public RelayCommand SettingsViewCommand { get; set; }
 
         public RelayCommand NavegarLineaCommand { get; set; }
@@ -34,7 +34,7 @@ namespace WPF_PAR.MVVM.ViewModels
         public object CurrentView
         {
             get => _currentView;
-            set { _currentView = value; OnPropertyChanged(); }
+            set { _currentView = value; OnPropertyChanged(); AreFiltersVisible = !( value is SettingsViewModel ); }
         }
 
         private bool _isMenuOpen = true;
@@ -43,7 +43,12 @@ namespace WPF_PAR.MVVM.ViewModels
             get => _isMenuOpen;
             set { _isMenuOpen = value; OnPropertyChanged(); }
         }
-
+        private bool _areFiltersVisible = true;
+        public bool AreFiltersVisible
+        {
+            get => _areFiltersVisible;
+            set { _areFiltersVisible = value; OnPropertyChanged(); }
+        }
 
         // --- CONSTRUCTOR ---
         public MainViewModel(FilterService filterService,

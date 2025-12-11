@@ -16,9 +16,39 @@
             <Grid Visibility="{Binding VerResumen, Converter={StaticResource BoolToVis}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
+                <materialDesign:Card Grid.Row="0" Margin="0,0,0,20" Padding="15" UniformCornerRadius="8">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Resumen General" VerticalAlignment="Center" 
+                       Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,20,0"/>
 
+                        <Separator Style="{StaticResource MaterialDesignDarkSeparator}" Margin="0,0,20,0"/>
+
+                        <materialDesign:PackIcon Kind="StoreMarker" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox Width="150" Margin="0,0,20,0"
+                      ItemsSource="{Binding DataContext.ListaSucursales, RelativeSource={RelativeSource AncestorType=Window}}"
+                      SelectedValue="{Binding Filters.SucursalId}"
+                      DisplayMemberPath="Value" SelectedValuePath="Key"
+                      materialDesign:HintAssist.Hint="Sucursal"/>
+
+                        <materialDesign:PackIcon Kind="Calendar" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <DatePicker Width="100" Margin="0,0,10,0" SelectedDate="{Binding Filters.FechaInicio}" materialDesign:HintAssist.Hint="Inicio"/>
+
+                        <TextBlock Text="-" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                        <DatePicker Width="100" Margin="0,0,20,0" SelectedDate="{Binding Filters.FechaFin}" materialDesign:HintAssist.Hint="Fin"/>
+
+                        <Button Command="{Binding ActualizarCommand}" Style="{StaticResource MaterialDesignOutlinedButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Refresh" Margin="0,0,5,0"/>
+                                <TextBlock Text="Actualizar"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </materialDesign:Card>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding TarjetasFamilias}">
                         <ItemsControl.ItemsPanel>
@@ -81,6 +111,7 @@
                     <RowDefinition Height="350"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
+                
 
                 <materialDesign:Card Grid.Row="0" Margin="0,0,0,20" Padding="10" UniformCornerRadius="8">
                     <Grid>
