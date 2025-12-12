@@ -21,7 +21,7 @@ namespace WPF_PAR.MVVM.ViewModels
     {
         private readonly VentasServices _ventasService;
         private readonly IDialogService _dialogService;
-        private readonly FilterService _filters;
+        public FilterService _filters { get; }
 
         // --- PROPIEDADES DE DATOS ---
         private decimal _totalVentas;
@@ -70,11 +70,10 @@ namespace WPF_PAR.MVVM.ViewModels
             _dialogService = dialogService;
             _filters = filterService;
             _ventasService = ventasService;
-            ListaVentas = new ObservableCollection<VentasModel>();
 
             // Suscribirse al filtro global
             _filters.OnFiltrosCambiados += CargarDatos;
-
+            ListaVentas = new ObservableCollection<VentasModel>();
             ActualizarCommand = new RelayCommand(o => CargarDatos());
 
             // Carga inicial

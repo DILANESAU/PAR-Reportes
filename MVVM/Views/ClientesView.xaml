@@ -26,28 +26,24 @@
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <materialDesign:PackIcon Kind="StoreMarker" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                    <ComboBox materialDesign:HintAssist.Hint="Sucursal" Width="200" Margin="0,0,25,0"
-                              Style="{StaticResource MaterialDesignFloatingHintComboBox}"
-                              ItemsSource="{Binding ListaSucursales}"
-                              DisplayMemberPath="Value"
-                              SelectedValuePath="Key"
-                              SelectedValue="{Binding SucursalSeleccionadaId}"/>
-
-                    <materialDesign:PackIcon Kind="CalendarRange" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                    <ComboBox materialDesign:HintAssist.Hint="Sucursal" Width="200" Margin="0,0,20,0"
+                        Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                        ItemsSource="{Binding DataContext.ListaSucursales, RelativeSource={RelativeSource AncestorType=Window}}"
+                        SelectedValue="{Binding Filters.SucursalId}"
+                        DisplayMemberPath="Value"
+                        SelectedValuePath="Key"/>
 
                     <DatePicker materialDesign:HintAssist.Hint="Desde" Width="120" Margin="0,0,15,0"
-                                Style="{StaticResource MaterialDesignFloatingHintDatePicker}"
-                                SelectedDate="{Binding FechaInicio}"
-                                Language="es-MX"/>
+                        Style="{StaticResource MaterialDesignFloatingHintDatePicker}"
+                        SelectedDate="{Binding Filters.FechaInicio}"/>
 
-                    <DatePicker materialDesign:HintAssist.Hint="Hasta" Width="120" Margin="0,0,25,0"
-                                Style="{StaticResource MaterialDesignFloatingHintDatePicker}"
-                                SelectedDate="{Binding FechaFin}"
-                                Language="es-MX"/>
+                    <DatePicker materialDesign:HintAssist.Hint="Hasta" Width="120" Margin="0,0,15,0"
+                        Style="{StaticResource MaterialDesignFloatingHintDatePicker}"
+                        SelectedDate="{Binding Filters.FechaFin}"/>
 
                     <Button Command="{Binding ActualizarCommand}" Content="ANALIZAR"
                             Style="{StaticResource MaterialDesignRaisedButton}"
-                            Height="35" materialDesign:ButtonAssist.CornerRadius="4"/>
+                            Height="35" materialDesign:ButtonAssist.CornerRadius="4" Margin="0,0,15,0"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">

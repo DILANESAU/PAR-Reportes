@@ -14,7 +14,7 @@ namespace WPF_PAR.MVVM.ViewModels
     {
         private readonly ClientesService _clientesService;
         private readonly IDialogService _dialogService;
-        private readonly FilterService _filters;
+        public FilterService _filters { get; }
 
         public ObservableCollection<ClienteRankingModel> ListaClientes { get; set; }
         private List<ClienteRankingModel> _datosOriginales;

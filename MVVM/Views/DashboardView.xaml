@@ -44,9 +44,40 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
+                <Grid Grid.Row="0" Margin="0,0,0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="131*"/>
+                        <ColumnDefinition Width="812*"/>
+                    </Grid.ColumnDefinitions>
+                    <materialDesign:Card Grid.Row="0" Margin="0,0,0,10" Padding="10" UniformCornerRadius="8" Grid.ColumnSpan="2">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Dashboard" VerticalAlignment="Center" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,20,0"/>
+
+                            <ComboBox Width="180" Margin="0,0,10,8"
+                                materialDesign:HintAssist.Hint="Sucursal"
+                                Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                                ItemsSource="{Binding DataContext.ListaSucursales, RelativeSource={RelativeSource AncestorType=Window}}"
+                                SelectedValue="{Binding Filters.SucursalId}" 
+                                DisplayMemberPath="Value" 
+                                SelectedValuePath="Key"/>
+                            <DatePicker Width="120" Margin="0,0,10,8" 
+                                materialDesign:HintAssist.Hint="Inicio"
+                                Style="{StaticResource MaterialDesignFloatingHintDatePicker}"
+                                SelectedDate="{Binding Filters.FechaInicio}"/>
+
+                            <DatePicker Width="120" Margin="0,0,20,8" 
+                                materialDesign:HintAssist.Hint="Fin"
+                                Style="{StaticResource MaterialDesignFloatingHintDatePicker}"
+                                SelectedDate="{Binding Filters.FechaFin}"/>
+
+                            <Button Command="{Binding ActualizarCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Content="Actualizar"/>
+                        </StackPanel>
+                    </materialDesign:Card>
+                </Grid>
                 <Grid Grid.Row="1" Margin="0,0,0,30">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
