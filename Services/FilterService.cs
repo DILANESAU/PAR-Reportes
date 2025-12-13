@@ -8,8 +8,6 @@ namespace WPF_PAR.Services
 {
     public class FilterService : ObservableObject
     {
-        // Evento para avisar a todos los ViewModels
-        public event Action OnFiltrosCambiados;
 
         private int _sucursalId;
         public int SucursalId
@@ -21,7 +19,6 @@ namespace WPF_PAR.Services
                 {
                     _sucursalId = value;
                     OnPropertyChanged();
-                    NotificarCambio();
                 }
             }
         }
@@ -36,7 +33,6 @@ namespace WPF_PAR.Services
                 {
                     _fechaInicio = value;
                     OnPropertyChanged();
-                    NotificarCambio();
                 }
             }
         }
@@ -51,23 +47,35 @@ namespace WPF_PAR.Services
                 {
                     _fechaFin = value;
                     OnPropertyChanged();
-                    NotificarCambio();
                 }
             }
         }
-
-        private void NotificarCambio()
+        // REFACTORIZACIÓN: Movemos la lista aquí para facilitar el binding
+        private Dictionary<int, string> _listaSucursales;
+        public Dictionary<int, string> ListaSucursales
         {
-            OnFiltrosCambiados?.Invoke();
+            get => _listaSucursales;
+            set { _listaSucursales = value; OnPropertyChanged(); }
         }
-
-        public FilterService()
+        public FilterService(SucursalesService sucursalesService)
         {
+            // Cargar sucursales al iniciar el servicio
+            ListaSucursales = sucursalesService.CargarSucursales();
+
             DateTime hoy = DateTime.Now;
             FechaInicio = new DateTime(hoy.Year, hoy.Month, 1);
             FechaFin = hoy;
-            SucursalId = Properties.Settings.Default.SucursalDefaultId;
-            if ( SucursalId == 0 ) SucursalId = 1508; 
+
+            // Lógica para seleccionar sucursal por defecto
+            int defaultId = Properties.Settings.Default.SucursalDefaultId;
+
+            // Si la sucursal guardada existe en la lista, úsala; si no, usa la primera disponible o 0
+            if ( ListaSucursales.ContainsKey(defaultId) )
+                SucursalId = defaultId;
+            else if ( ListaSucursales.Count > 0 )
+                SucursalId = ListaSucursales.Keys.First();
+            else
+                SucursalId = 0;
         }
     }
 }

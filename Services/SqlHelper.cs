@@ -12,9 +12,15 @@ namespace WPF_PAR.Services
     {
         private readonly string _connectionString;
 
-        public SqlHelper()
+        // MODIFICACIÓN: Parámetro opcional con valor por defecto
+        public SqlHelper(string connectionKey = "SQLServerConnection")
         {
-            _connectionString = ConfigurationManager.ConnectionStrings["SQLServerConnection"].ConnectionString;
+            // Busca la cadena por nombre. Si no existe, lanza error claro.
+            var settings = ConfigurationManager.ConnectionStrings[connectionKey];
+            if ( settings == null )
+                throw new Exception($"No se encontró la cadena de conexión: {connectionKey}");
+
+            _connectionString = settings.ConnectionString;
         }
         public async Task<List<T>> QueryAsync<T>(string query, Dictionary<string, object> parameters, Func<SqlDataReader, T> mapFunction)
         {

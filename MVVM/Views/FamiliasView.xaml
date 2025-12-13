@@ -148,8 +148,7 @@
                                           LegendPosition="Right"
                                           Margin="0,20,0,0"
                                           InitialRotation="-90"
-                                          TooltipTextSize="16"  
-                                          TooltipTextPaint="{Binding TooltipTextPaint}"/>
+                                          TooltipTextSize="16"/>
                         </Grid>
                     </materialDesign:Card>
 

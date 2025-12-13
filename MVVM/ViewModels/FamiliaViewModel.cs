@@ -28,7 +28,7 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly IDialogService _dialogService;
         private readonly ISnackbarService _snackbarService;
         private readonly BusinessLogicService _businessLogic;
-        public FilterService _filters { get; }
+        public FilterService Filters { get; }
 
         // --- COLECCIONES PRINCIPALES ---
         private ObservableCollection<FamiliaResumenModel> _tarjetasFamilias;
@@ -101,7 +101,7 @@ namespace WPF_PAR.MVVM.ViewModels
             _dialogService = dialogService;
             _snackbarService = snackbarService;
             _businessLogic = businessLogic;
-            _filters = filterService;
+            Filters = filterService;
 
             _reportesService = new ReportesService();
             _catalogoService = new CatalogoService(businessLogic);
@@ -114,13 +114,7 @@ namespace WPF_PAR.MVVM.ViewModels
             _datosAnualesCache = new List<VentaReporteModel>();
 
             InicializarTarjetasVacias();
-
-            // SUSCRIPCIÓN AL FILTRO GLOBAL
-            _filters.OnFiltrosCambiados += () =>
-            {
-                if ( !VerResumen ) VerResumen = true; // Volver al inicio al cambiar filtros
-                EjecutarReporte();
-            };
+           
 
             ActualizarCommand = new RelayCommand(o => EjecutarReporte());
 
@@ -173,9 +167,9 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 // 1. Obtener Datos del Periodo (Usando filtros globales)
                 var ventasRaw = await _reportesService.ObtenerVentasBrutasRango(
-                    _filters.SucursalId,
-                    _filters.FechaInicio,
-                    _filters.FechaFin
+                    Filters.SucursalId,
+                    Filters.FechaInicio,
+                    Filters.FechaFin
                 );
 
                 // 2. Enriquecer datos con Catálogo CSV
@@ -198,8 +192,8 @@ namespace WPF_PAR.MVVM.ViewModels
 
                 // 3. Cargar Histórico Anual (Para tendencias) - Segundo plano
                 _datosAnualesCache = await _reportesService.ObtenerHistoricoAnualPorArticulo(
-                    _filters.FechaFin.Year.ToString(),
-                    _filters.SucursalId.ToString()
+                    Filters.FechaFin.Year.ToString(),
+                    Filters.SucursalId.ToString()
                 );
 
                 // Mapear familias al histórico también
@@ -395,7 +389,7 @@ namespace WPF_PAR.MVVM.ViewModels
                 return;
             }
 
-            string nombreArchivo = $"Reporte_{_filters.SucursalId}_{TituloDetalle.Replace(":", "")}.csv";
+            string nombreArchivo = $"Reporte_{Filters.SucursalId}_{TituloDetalle.Replace(":", "")}.csv";
             string rutaGuardado = _dialogService.ShowSaveFileDialog("Archivo CSV (*.csv)|*.csv", nombreArchivo);
 
             if ( !string.IsNullOrEmpty(rutaGuardado) )

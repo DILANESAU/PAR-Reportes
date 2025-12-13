@@ -8,22 +8,78 @@ namespace WPF_PAR.Services
 {
     public class AuthService
     {
-        // Simulamos usuarios (Mock Data)
-        private List<UsuarioModel> _usuarios = new List<UsuarioModel>
-        {
-            // 1. ADMIN: Ve todo (SucursalesPermitidas = null)
-            new UsuarioModel { Username="admin", Password="123", NombreCompleto="Administrador", Rol="Admin", SucursalesPermitidas = null },
-            
-            // 2. GERENTE OCOSINGO: Solo ve la 1508
-            new UsuarioModel { Username="gerente", Password="123", NombreCompleto="Gerente Ocosingo", Rol="Gerente", SucursalesPermitidas = new List<int>{ 1508 } },
-            
-            // 3. SUPERVISOR: Ve dos sucursales
-            new UsuarioModel { Username="super", Password="123", NombreCompleto="Supervisor Zona", Rol="Supervisor", SucursalesPermitidas = new List<int>{ 1508, 1202 } }
-        };
+        private readonly SqlHelper _authSqlHelper;
 
-        public UsuarioModel ValidarLogin(string user, string pass)
+        public AuthService() { _authSqlHelper = new SqlHelper("AuthConnection"); }
+
+        public async Task<UsuarioModel> ValidarLoginAsync(string usuarioInput, string passwordInput)
         {
-            return _usuarios.FirstOrDefault(u => u.Username == user && u.Password == pass);
+            UsuarioModel usuarioEncontrado = null;
+
+            string query = @"
+                SELECT 
+                    IdUsuario,
+                    [user],
+                    NombreCompleto, 
+                    Correo,
+                    Rol
+                FROM Usuarios 
+                WHERE [user] = @User AND Clave = @Pass";
+
+            var parametros = new Dictionary<string, object>
+            {
+                { "@User", usuarioInput },
+                { "@Pass", passwordInput }
+            };
+
+            var listaUsuarios = await _authSqlHelper.QueryAsync(query, parametros, lector =>
+            {
+                return new UsuarioModel
+                {
+                    IdUsuario = Convert.ToInt32(lector["IdUsuario"]),
+                    Username = lector["user"].ToString(),
+                    NombreCompleto = lector["NombreCompleto"].ToString(),
+                    Rol = lector["Rol"].ToString(),
+                    Password = "",
+                    SucursalesPermitidas = null
+                };
+            });
+
+            usuarioEncontrado = listaUsuarios.FirstOrDefault();
+
+            if ( usuarioEncontrado == null ) return null;
+
+            if ( usuarioEncontrado.Rol.Equals("Admin", StringComparison.OrdinalIgnoreCase) )
+            {
+                usuarioEncontrado.SucursalesPermitidas = null;
+            }
+            else
+            {
+
+                string queryPermisos = @"
+                    SELECT IdSucursal 
+                    FROM UsuarioSucursales
+                    WHERE IdUsuario = @Id";
+
+                // Reutilizamos el parametro de usuario
+                var paramsPermisos = new Dictionary<string, object> { { "@Id", usuarioEncontrado.IdUsuario } };
+
+                var listaIds = await _authSqlHelper.QueryAsync(queryPermisos, paramsPermisos, lector =>
+                {
+                    return Convert.ToInt32(lector["IdSucursal"]);
+                });
+
+                if ( listaIds.Count > 0 )
+                {
+                    usuarioEncontrado.SucursalesPermitidas = listaIds;
+                }
+                else
+                {
+                    usuarioEncontrado.SucursalesPermitidas = new List<int>();
+                }
+            }
+
+            return usuarioEncontrado;
         }
     }
 }

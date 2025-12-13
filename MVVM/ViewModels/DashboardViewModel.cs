@@ -21,7 +21,7 @@ namespace WPF_PAR.MVVM.ViewModels
     {
         private readonly VentasServices _ventasService;
         private readonly IDialogService _dialogService;
-        public FilterService _filters { get; }
+        public FilterService Filters { get; }
 
         // --- PROPIEDADES DE DATOS ---
         private decimal _totalVentas;
@@ -68,11 +68,9 @@ namespace WPF_PAR.MVVM.ViewModels
         public DashboardViewModel(VentasServices ventasService, IDialogService dialogService, FilterService filterService)
         {
             _dialogService = dialogService;
-            _filters = filterService;
+            Filters = filterService;
             _ventasService = ventasService;
 
-            // Suscribirse al filtro global
-            _filters.OnFiltrosCambiados += CargarDatos;
             ListaVentas = new ObservableCollection<VentasModel>();
             ActualizarCommand = new RelayCommand(o => CargarDatos());
 
@@ -87,9 +85,9 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 // 1. Obtener Ventas del Rango (Diario/Tabla)
                 var datosRango = await _ventasService.ObtenerVentasRangoAsync(
-                    _filters.SucursalId,
-                    _filters.FechaInicio,
-                    _filters.FechaFin
+                    Filters.SucursalId,
+                    Filters.FechaInicio,
+                    Filters.FechaFin
                 );
 
                 ListaVentas = new ObservableCollection<VentasModel>(datosRango);
@@ -99,8 +97,8 @@ namespace WPF_PAR.MVVM.ViewModels
 
                 // 2. Obtener Histórico Anual (Usando el año de la fecha fin)
                 var datosAnuales = await _ventasService.ObtenerVentaAnualAsync(
-                    _filters.SucursalId,
-                    _filters.FechaFin.Year
+                    Filters.SucursalId,
+                    Filters.FechaFin.Year
                 );
 
                 ConfigurarGraficoHistorico(datosAnuales);

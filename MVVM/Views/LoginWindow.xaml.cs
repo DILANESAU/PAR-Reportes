@@ -37,28 +37,42 @@ namespace WPF_PAR
         {
             Application.Current.Shutdown();
         }
-        private void BtnLogin_Click(object sender, RoutedEventArgs e)
+        private async void BtnLogin_Click(object sender, RoutedEventArgs e)
         {
             string user = txtUser.Text;
             string pass = txtPass.Password;
-            // 1. Validar credenciales
-            var usuario = _authService.ValidarLogin(user, pass);
 
-            if ( usuario != null )
+            BtnLogin.IsEnabled = false;
+            BtnLogin.Content = "Verificando...";
+
+            try
             {
-                Session.UsuarioActual = usuario;
+                // 1. Validar credenciales (Ahora con AWAIT)
+                var usuario = await _authService.ValidarLoginAsync(user, pass);
 
-                // CAMBIO: Pedimos la MainWindow al contenedor de la App
-                // Esto crea MainWindow -> crea MainViewModel -> crea DashboardViewModel -> etc.
-                var mainWindow = ( ( App ) Application.Current ).Services.GetRequiredService<MainWindow>();
-                mainWindow.Show();
+                if ( usuario != null )
+                {
+                    Session.UsuarioActual = usuario;
 
-                this.Close();
+                    var mainWindow = ( ( App ) Application.Current ).Services.GetRequiredService<MainWindow>();
+                    mainWindow.Show();
+
+                    this.Close();
+                }
+                else
+                {
+                    MessageBox.Show("Usuario o contraseña incorrectos.", "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
-            else
+            catch ( Exception ex )
             {
-                // FALLO
-                MessageBox.Show("Usuario o contraseña incorrectos.", "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show($"Error de conexión: {ex.Message}", "Error Crítico", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Restaurar estado del botón
+                BtnLogin.IsEnabled = true;
+                BtnLogin.Content = "INICIAR SESIÓN";
             }
         }
     }

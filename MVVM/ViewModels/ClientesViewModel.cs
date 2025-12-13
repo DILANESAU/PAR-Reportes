@@ -14,7 +14,7 @@ namespace WPF_PAR.MVVM.ViewModels
     {
         private readonly ClientesService _clientesService;
         private readonly IDialogService _dialogService;
-        public FilterService _filters { get; }
+        public FilterService Filters { get; }
 
         public ObservableCollection<ClienteRankingModel> ListaClientes { get; set; }
         private List<ClienteRankingModel> _datosOriginales;
@@ -42,16 +42,13 @@ namespace WPF_PAR.MVVM.ViewModels
         {
             _clientesService = new ClientesService();
             _dialogService = dialogService;
-            _filters = filterService;
+            Filters = filterService;
 
             ListaClientes = new ObservableCollection<ClienteRankingModel>();
 
             OrdenarMejoresCommand = new RelayCommand(o => AplicarOrden("MEJORES"));
             OrdenarPeoresCommand = new RelayCommand(o => AplicarOrden("RIESGO"));
-
-            // Suscripción al filtro global
-            _filters.OnFiltrosCambiados += CargarDatos;
-
+         
             CargarDatos();
         }
 
@@ -62,9 +59,9 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 // Usamos filtro global (Rango exacto)
                 var datos = await _clientesService.ObtenerRankingClientes(
-                    _filters.SucursalId,
-                    _filters.FechaInicio,
-                    _filters.FechaFin
+                    Filters.SucursalId,
+                    Filters.FechaInicio,
+                    Filters.FechaFin
                 );
 
                 _datosOriginales = datos;

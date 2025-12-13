@@ -33,7 +33,7 @@ namespace WPF_PAR
             services.AddSingleton<ISnackbarService, SnackbarService>();
 
             // Servicios de Negocio (Stateful services como FilterService deben ser Singleton)
-            services.AddTransient<FilterService>();
+            services.AddSingleton<FilterService>();
             services.AddSingleton<BusinessLogicService>();
             services.AddSingleton<SucursalesService>();
 
