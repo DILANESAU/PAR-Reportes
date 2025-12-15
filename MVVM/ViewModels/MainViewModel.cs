@@ -52,7 +52,6 @@ namespace WPF_PAR.MVVM.ViewModels
 
         // --- CONSTRUCTOR ---
         public MainViewModel(FilterService filterService,
-        SucursalesService sucursalesService,
         DashboardViewModel dashboardVM,
         FamiliaViewModel familiaVM,
         ClientesViewModel clientesVM,
@@ -66,7 +65,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
             // Cargar sucursales para el combo global (respetando permisos si existieran)
             // Aquí podrías filtrar usando Session.UsuarioActual.SucursalesPermitidas si quisieras
-            ListaSucursales = sucursalesService.CargarSucursales();
+            ListaSucursales = filterService.ListaSucursales;
 
             // D. CONFIGURAR COMANDOS
             DashboardViewCommand = new RelayCommand(o => CurrentView = DashboardVM);

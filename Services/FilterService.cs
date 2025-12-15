@@ -59,23 +59,45 @@ namespace WPF_PAR.Services
         }
         public FilterService(SucursalesService sucursalesService)
         {
-            // Cargar sucursales al iniciar el servicio
-            ListaSucursales = sucursalesService.CargarSucursales();
+            // 1. Cargamos TODAS las sucursales del CSV/BD
+            var todas = sucursalesService.CargarSucursales();
 
+            // 2. Aplicamos el FILTRO de Seguridad
+            if ( Session.UsuarioActual.SucursalesPermitidas == null )
+            {
+                // Si es NULL (Admin), mostramos todas
+                ListaSucursales = todas;
+            }
+            else
+            {
+                // Si tiene lista (aunque sea vacía), filtramos
+                ListaSucursales = todas
+                    .Where(s => Session.UsuarioActual.SucursalesPermitidas.Contains(s.Key))
+                    .ToDictionary(k => k.Key, v => v.Value);
+            }
+
+            // 3. Configurar Fechas
             DateTime hoy = DateTime.Now;
             FechaInicio = new DateTime(hoy.Year, hoy.Month, 1);
             FechaFin = hoy;
 
-            // Lógica para seleccionar sucursal por defecto
-            int defaultId = Properties.Settings.Default.SucursalDefaultId;
+            // 4. Seleccionar Sucursal por Defecto de forma segura
+            int defaultGuardada = Properties.Settings.Default.SucursalDefaultId;
 
-            // Si la sucursal guardada existe en la lista, úsala; si no, usa la primera disponible o 0
-            if ( ListaSucursales.ContainsKey(defaultId) )
-                SucursalId = defaultId;
+            if ( ListaSucursales.ContainsKey(defaultGuardada) )
+            {
+                SucursalId = defaultGuardada;
+            }
             else if ( ListaSucursales.Count > 0 )
+            {
+                // Si la guardada no está permitida, seleccionamos la primera disponible
                 SucursalId = ListaSucursales.Keys.First();
+            }
             else
+            {
+                // Caso extremo: Usuario sin permisos a NADA
                 SucursalId = 0;
+            }
         }
     }
 }

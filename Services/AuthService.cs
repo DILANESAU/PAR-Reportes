@@ -55,7 +55,6 @@ namespace WPF_PAR.Services
             }
             else
             {
-
                 string queryPermisos = @"
                     SELECT IdSucursal 
                     FROM UsuarioSucursales

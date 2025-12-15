@@ -28,6 +28,7 @@ namespace WPF_PAR.MVVM.ViewModels
         }
         public ObservableCollection<ColorItem> ColoresDisponibles { get; set; }
         public RelayCommand CambiarColorCommand { get; set; }
+        public RelayCommand GuardarCommand { get; set; }
         public SettingsViewModel(IDialogService dialogService)
         {
             _dialogService = dialogService;
@@ -36,7 +37,7 @@ namespace WPF_PAR.MVVM.ViewModels
             _sucursalesService = new SucursalesService();
 
             IsDarkMode = Properties.Settings.Default.IsDarkMode;
-
+            GuardarCommand = new RelayCommand(o => GuardarTodo());
             ColoresDisponibles = new ObservableCollection<ColorItem>
             {
                 new () { Nombre = "Purple", CodigoHex = "#9C27B0" },
@@ -75,6 +76,8 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 MiSucursalDefault = MisSucursales.Keys.First();
             }
+            OnPropertyChanged(nameof(MisSucursales));
+            OnPropertyChanged(nameof(MiSucursalDefault));
         }
 
         private void GuardarTodo()

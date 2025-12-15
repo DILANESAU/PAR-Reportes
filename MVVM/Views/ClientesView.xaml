@@ -1,9 +1,17 @@
 ﻿<UserControl x:Class="WPF_PAR.MVVM.Views.ClientesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              TextElement.Foreground="{DynamicResource MaterialDesignBody}"
              Background="{DynamicResource MaterialDesignPaper}">
+
+    <UserControl.Resources>
+        <Style x:Key="CellMoney" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+    </UserControl.Resources>
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -13,123 +21,105 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="Análisis de Cartera de Clientes" Style="{StaticResource MaterialDesignHeadline5TextBlock}" FontWeight="Bold"/>
-            <TextBlock Text="Compara el desempeño de ventas contra el mismo periodo del año anterior." Opacity="0.6"/>
+            <TextBlock Text="Análisis Anual de Clientes" Style="{StaticResource MaterialDesignHeadline5TextBlock}" FontWeight="Bold"/>
+            <TextBlock Text="Visualiza el comportamiento mes a mes y detecta tendencias." Opacity="0.6"/>
         </StackPanel>
 
         <materialDesign:Card Grid.Row="1" Margin="0,0,0,20" Padding="20" UniformCornerRadius="8">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <ComboBox ItemsSource="{Binding Filters.ListaSucursales}" 
+                          SelectedValue="{Binding Filters.SucursalId}"
+                          DisplayMemberPath="Value" SelectedValuePath="Key"
+                          materialDesign:HintAssist.Hint="Sucursal" Width="200" Margin="0,0,20,0"
+                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"/>
 
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <materialDesign:PackIcon Kind="StoreMarker" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                    <ComboBox materialDesign:HintAssist.Hint="Sucursal" Width="200" Margin="0,0,20,0"
-                        Style="{StaticResource MaterialDesignFloatingHintComboBox}"
-                        ItemsSource="{Binding DataContext.ListaSucursales, RelativeSource={RelativeSource AncestorType=Window}}"
-                        SelectedValue="{Binding Filters.SucursalId}"
-                        DisplayMemberPath="Value"
-                        SelectedValuePath="Key"/>
+                <ComboBox ItemsSource="{Binding AñosDisponibles}"
+                          SelectedItem="{Binding AnioSeleccionado, UpdateSourceTrigger=PropertyChanged}"
+                          materialDesign:HintAssist.Hint="Año" Width="100" Margin="0,0,20,0"
+                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"/>
 
-                    <DatePicker materialDesign:HintAssist.Hint="Desde" Width="120" Margin="0,0,15,0"
-                        Style="{StaticResource MaterialDesignFloatingHintDatePicker}"
-                        SelectedDate="{Binding Filters.FechaInicio}"/>
-
-                    <DatePicker materialDesign:HintAssist.Hint="Hasta" Width="120" Margin="0,0,15,0"
-                        Style="{StaticResource MaterialDesignFloatingHintDatePicker}"
-                        SelectedDate="{Binding Filters.FechaFin}"/>
-
-                    <Button Command="{Binding ActualizarCommand}" Content="ANALIZAR"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
-                            Height="35" materialDesign:ButtonAssist.CornerRadius="4" Margin="0,0,15,0"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
-                    <TextBlock Text="Ordenar por:" VerticalAlignment="Center" Margin="0,0,10,0" Opacity="0.7"/>
-
-                    <RadioButton Style="{StaticResource MaterialDesignChoiceChipOutlineRadioButton}"
-                                 Command="{Binding OrdenarMejoresCommand}" IsChecked="True"
-                                 Content="🏆 Mejores Ventas" Margin="0,0,8,0"/>
-
-                    <RadioButton Style="{StaticResource MaterialDesignChoiceChipOutlineRadioButton}"
-                                 Command="{Binding OrdenarPeoresCommand}"
-                                 Content="⚠️ En Riesgo (Baja)" />
-                </StackPanel>
-            </Grid>
+                <Button Command="{Binding ActualizarCommand}" Content="CONSULTAR" 
+                        Style="{StaticResource MaterialDesignRaisedButton}" Margin="0,0,0,10"/>
+            </StackPanel>
         </materialDesign:Card>
 
-        <materialDesign:Card Grid.Row="2" UniformCornerRadius="8" Padding="0" VerticalAlignment="Stretch">
+        <materialDesign:Card Grid.Row="2" UniformCornerRadius="8" Padding="0">
             <DataGrid ItemsSource="{Binding ListaClientes}" 
-                      Style="{StaticResource ModernDataGrid}" 
-                      ColumnHeaderStyle="{StaticResource ModernColumnHeader}">
+                      FrozenColumnCount="1" 
+                      Style="{StaticResource ModernDataGrid}"
+                      CanUserSortColumns="True">
+
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="CLIENTE" Binding="{Binding Nombre}" Width="3*"/>
+                    <DataGridTextColumn Header="CLIENTE" Binding="{Binding Nombre}" Width="200" FontWeight="SemiBold"/>
 
-                    <DataGridTextColumn Header="PERIODO ANTERIOR" Binding="{Binding VentaAnterior, StringFormat=C2}" Width="*" Foreground="Gray">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="ENE" Binding="{Binding Enero, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="FEB" Binding="{Binding Febrero, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="MAR" Binding="{Binding Marzo, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="ABR" Binding="{Binding Abril, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="MAY" Binding="{Binding Mayo, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="JUN" Binding="{Binding Junio, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="JUL" Binding="{Binding Julio, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="AGO" Binding="{Binding Agosto, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="SEP" Binding="{Binding Septiembre, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="OCT" Binding="{Binding Octubre, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="NOV" Binding="{Binding Noviembre, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
+                    <DataGridTextColumn Header="DIC" Binding="{Binding Diciembre, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
 
-                    <DataGridTextColumn Header="PERIODO ACTUAL" Binding="{Binding VentaActual, StringFormat=C2}" Width="*" FontWeight="Bold">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-
-                    <DataGridTemplateColumn Header="VARIACIÓN $" Width="1.2*">
+                    <DataGridTemplateColumn Header="TOTAL ANUAL" Width="140" SortMemberPath="TotalAnual">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Border CornerRadius="4" Padding="8,4">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Tendencia}" Value="DOWN">
+                                                    <Setter Property="Background" Value="#20F44336"/>
+                                                    <Setter Property="BorderBrush" Value="#F44336"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Tendencia}" Value="UP">
+                                                    <Setter Property="Background" Value="#204CAF50"/>
+                                                    <Setter Property="BorderBrush" Value="#4CAF50"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
 
-                                    <materialDesign:PackIcon VerticalAlignment="Center" Margin="0,0,5,0" Width="16" Height="16">
-                                        <materialDesign:PackIcon.Style>
-                                            <Style TargetType="materialDesign:PackIcon">
-                                                <Setter Property="Kind" Value="TrendingUp"/>
-                                                <Setter Property="Foreground" Value="Green"/>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <materialDesign:PackIcon Kind="TrendingUp" Foreground="Green" Margin="0,0,5,0">
+                                            <materialDesign:PackIcon.Style>
+                                                <Style TargetType="materialDesign:PackIcon" BasedOn="{StaticResource {x:Type materialDesign:PackIcon}}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Tendencia}" Value="UP">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </materialDesign:PackIcon.Style>
+                                        </materialDesign:PackIcon>
 
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Estado}" Value="⚠️ En Riesgo">
-                                                        <Setter Property="Kind" Value="TrendingDown"/>
-                                                        <Setter Property="Foreground" Value="Red"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </materialDesign:PackIcon.Style>
-                                    </materialDesign:PackIcon>
+                                        <materialDesign:PackIcon Kind="TrendingDown" Foreground="Red" Margin="0,0,5,0">
+                                            <materialDesign:PackIcon.Style>
+                                                <Style TargetType="materialDesign:PackIcon" BasedOn="{StaticResource {x:Type materialDesign:PackIcon}}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Tendencia}" Value="DOWN">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </materialDesign:PackIcon.Style>
+                                        </materialDesign:PackIcon>
 
-                                    <TextBlock Text="{Binding Diferencia, StringFormat=C2}" FontWeight="Bold" VerticalAlignment="Center">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="Green"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Estado}" Value="⚠️ En Riesgo">
-                                                        <Setter Property="Foreground" Value="Red"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-
-                                </StackPanel>
+                                        <TextBlock Text="{Binding TotalAnual, StringFormat=C2}" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-
-                    <DataGridTextColumn Header="%" Binding="{Binding PorcentajeCambio, StringFormat={}{0:N1}%}" Width="0.8*">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                <Setter Property="Padding" Value="0,0,15,0"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
                 </DataGrid.Columns>
             </DataGrid>
         </materialDesign:Card>
@@ -137,9 +127,14 @@
         <Grid Grid.RowSpan="3" Background="#90FFFFFF" 
               Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
             <materialDesign:Card UniformCornerRadius="10" Padding="30" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel>
-                    <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}" Value="0" IsIndeterminate="True"/>
-                    <TextBlock Text="Analizando ventas..." Margin="0,15,0,0" FontWeight="Bold"/>
+                <StackPanel HorizontalAlignment="Center">
+                    <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}" 
+                                 Value="0" IsIndeterminate="True"
+                                 Width="50" Height="50" Margin="0,0,0,20"
+                                 Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+
+                    <TextBlock Text="Procesando Datos..." FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Por favor espere un momento" Opacity="0.6" FontSize="12" HorizontalAlignment="Center" Margin="0,5,0,0"/>
                 </StackPanel>
             </materialDesign:Card>
         </Grid>

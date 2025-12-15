@@ -22,7 +22,7 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class FamiliaViewModel : ObservableObject
     {
-        // --- SERVICIOS ---
+
         private readonly ReportesService _reportesService;
         private readonly CatalogoService _catalogoService;
         private readonly IDialogService _dialogService;
@@ -30,14 +30,18 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly BusinessLogicService _businessLogic;
         public FilterService Filters { get; }
 
-        // --- COLECCIONES PRINCIPALES ---
         private ObservableCollection<FamiliaResumenModel> _tarjetasFamilias;
         public ObservableCollection<FamiliaResumenModel> TarjetasFamilias
         {
             get => _tarjetasFamilias;
             set { _tarjetasFamilias = value; OnPropertyChanged(); }
         }
-
+        private ObservableCollection<DatoRanking> _topClientesFamilia;
+        public ObservableCollection<DatoRanking> TopClientesFamilia
+        {
+            get => _topClientesFamilia;
+            set { _topClientesFamilia = value; OnPropertyChanged(); }
+        }
         private ObservableCollection<VentaReporteModel> _detalleVentas;
         public ObservableCollection<VentaReporteModel> DetalleVentas
         {
@@ -52,11 +56,9 @@ namespace WPF_PAR.MVVM.ViewModels
             set { _resumenLineas = value; OnPropertyChanged(); }
         }
 
-        // --- DATOS EN MEMORIA ---
         private List<VentaReporteModel> _ventasProcesadas;
-        private List<VentaReporteModel> _datosAnualesCache; // Para tendencia
+        private List<VentaReporteModel> _datosAnualesCache; 
 
-        // --- GRÁFICOS DETALLE ---
         private ISeries[] _seriesDetalle;
         public ISeries[] SeriesDetalle { get => _seriesDetalle; set { _seriesDetalle = value; OnPropertyChanged(); } }
 
@@ -64,7 +66,6 @@ namespace WPF_PAR.MVVM.ViewModels
         public Axis[] EjeXTendencia { get; set; }
         public Axis[] EjeYTendencia { get; set; }
 
-        // --- ESTADO UI ---
         private bool _isLoading;
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
 
@@ -88,14 +89,14 @@ namespace WPF_PAR.MVVM.ViewModels
 
         private string _lineaActual = "Todas";
 
-        // --- COMANDOS ---
         public RelayCommand ActualizarCommand { get; set; }
         public RelayCommand VerDetalleCommand { get; set; }
         public RelayCommand RegresarCommand { get; set; }
         public RelayCommand ExportarExcelCommand { get; set; }
+        public RelayCommand OrdenarVentaCommand { get; set; }
+        public RelayCommand OrdenarNombreCommand { get; set; }
 
 
-        // --- CONSTRUCTOR ---
         public FamiliaViewModel(IDialogService dialogService, ISnackbarService snackbarService, BusinessLogicService businessLogic, FilterService filterService)
         {
             _dialogService = dialogService;
@@ -109,6 +110,8 @@ namespace WPF_PAR.MVVM.ViewModels
             TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>();
             DetalleVentas = new ObservableCollection<VentaReporteModel>();
             ResumenLineas = new ObservableCollection<LineaResumenModel>();
+            OrdenarVentaCommand = new RelayCommand(o => AplicarOrden("VENTA"));
+            OrdenarNombreCommand = new RelayCommand(o => AplicarOrden("NOMBRE"));
 
             _ventasProcesadas = new List<VentaReporteModel>();
             _datosAnualesCache = new List<VentaReporteModel>();
@@ -126,7 +129,6 @@ namespace WPF_PAR.MVVM.ViewModels
             RegresarCommand = new RelayCommand(o => VerResumen = true);
             ExportarExcelCommand = new RelayCommand(o => GenerarReporteExcel());
 
-            // Carga inicial
             EjecutarReporte();
         }
 
@@ -159,20 +161,17 @@ namespace WPF_PAR.MVVM.ViewModels
             else
                 EjecutarReporte();
         }
-
         private async void EjecutarReporte()
         {
             IsLoading = true;
             try
             {
-                // 1. Obtener Datos del Periodo (Usando filtros globales)
                 var ventasRaw = await _reportesService.ObtenerVentasBrutasRango(
                     Filters.SucursalId,
                     Filters.FechaInicio,
                     Filters.FechaFin
                 );
 
-                // 2. Enriquecer datos con Catálogo CSV
                 foreach ( var venta in ventasRaw )
                 {
                     var info = _catalogoService.ObtenerInfo(venta.Articulo);
@@ -190,13 +189,11 @@ namespace WPF_PAR.MVVM.ViewModels
                 _ventasProcesadas = ventasRaw;
                 GenerarResumenVisual();
 
-                // 3. Cargar Histórico Anual (Para tendencias) - Segundo plano
                 _datosAnualesCache = await _reportesService.ObtenerHistoricoAnualPorArticulo(
                     Filters.FechaFin.Year.ToString(),
                     Filters.SucursalId.ToString()
                 );
 
-                // Mapear familias al histórico también
                 foreach ( var item in _datosAnualesCache )
                 {
                     var info = _catalogoService.ObtenerInfo(item.Articulo);
@@ -212,7 +209,23 @@ namespace WPF_PAR.MVVM.ViewModels
                 IsLoading = false;
             }
         }
+        private void AplicarOrden(string criterio)
+        {
+            if ( TarjetasFamilias == null || TarjetasFamilias.Count == 0 ) return;
 
+            var lista = TarjetasFamilias.ToList();
+
+            if ( criterio == "VENTA" )
+            {
+                lista = lista.OrderByDescending(x => x.VentaTotal).ToList();
+            }
+            else
+            {
+                lista = lista.OrderBy(x => x.NombreFamilia).ToList();
+            }
+
+            TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(lista);
+        }
         private void GenerarResumenVisual()
         {
             TarjetasFamilias.Clear();
@@ -242,9 +255,9 @@ namespace WPF_PAR.MVVM.ViewModels
                         ColorTexto = ColorHelper.ObtenerColorTextto(color)
                     });
                 }
+                AplicarOrden("VENTA");
             }
         }
-
         private FamiliaResumenModel CrearTarjetaConDatos(IGrouping<string, VentaReporteModel> grupo)
         {
             var topCliente = grupo.GroupBy(g => g.Cliente)
@@ -270,7 +283,6 @@ namespace WPF_PAR.MVVM.ViewModels
                 ColorTexto = ColorHelper.ObtenerColorTextto(colorFondo)
             };
         }
-
         private void CargarDetalle(string familia)
         {
             TituloDetalle = $"{familia}";
@@ -286,8 +298,23 @@ namespace WPF_PAR.MVVM.ViewModels
             CalcularTendenciaAnual(familia);
 
             VerResumen = false;
-        }
+            var totalFamilia = filtrado.Sum(x => x.TotalVenta);
 
+            var topCtes = filtrado
+                .GroupBy(x => x.Cliente)
+                .Select(g => new DatoRanking
+                {
+                    Nombre = g.Key,
+                    Valor = g.Sum(v => v.TotalVenta),
+                    // Calculamos cuánto representa del total para una barra de progreso
+                    Porcentaje = totalFamilia > 0 ? ( double ) ( g.Sum(v => v.TotalVenta) / totalFamilia ) * 100 : 0
+                })
+                .OrderByDescending(x => x.Valor)
+                .Take(5) // Solo los 5 mejores
+                .ToList();
+
+            TopClientesFamilia = new ObservableCollection<DatoRanking>(topCtes);
+        }
         private void CalcularResumenPorLineas(List<VentaReporteModel> ventasFamilia)
         {
             var gruposLinea = ventasFamilia
@@ -318,7 +345,6 @@ namespace WPF_PAR.MVVM.ViewModels
                 ToolTipLabelFormatter = (point) => $"{point.Context.Series.Name}: {point.Model:C2}"
             }).ToArray();
         }
-
         private void CalcularTendenciaAnual(string familia)
         {
             var ventasFamiliaAnual = _datosAnualesCache
@@ -351,7 +377,6 @@ namespace WPF_PAR.MVVM.ViewModels
             OnPropertyChanged(nameof(EjeXTendencia));
             OnPropertyChanged(nameof(EjeYTendencia));
         }
-
         private void FiltrarTabla()
         {
             if ( DetalleVentas == null ) return;
@@ -374,13 +399,11 @@ namespace WPF_PAR.MVVM.ViewModels
                 };
             }
         }
-
         private string LimpiarParaCsv(string texto)
         {
             if ( string.IsNullOrEmpty(texto) ) return "";
             return $"\"{texto.Replace("\"", "\"\"")}\"";
         }
-
         private void GenerarReporteExcel()
         {
             if ( DetalleVentas == null || DetalleVentas.Count == 0 )
@@ -414,12 +437,17 @@ namespace WPF_PAR.MVVM.ViewModels
                 }
             }
         }
-
         private List<string> ObtenerFamiliasBase()
         {
             if ( _lineaActual == "Arquitectonica" ) return ConfiguracionLineas.Arquitectonica;
             if ( _lineaActual == "Especializada" ) return ConfiguracionLineas.Especializada;
             return ConfiguracionLineas.ObtenerTodas();
+        }
+        public class DatoRanking
+        {
+            public string Nombre { get; set; }
+            public decimal Valor { get; set; }
+            public double Porcentaje { get; set; }
         }
     }
 }

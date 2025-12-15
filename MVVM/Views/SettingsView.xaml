@@ -79,14 +79,23 @@
                     <TextBlock Text="Selecciona la sucursal que se cargará automáticamente al iniciar:" Margin="0,0,0,10"/>
 
                     <ComboBox materialDesign:HintAssist.Hint="Sucursal Predeterminada"
-                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
-                  ItemsSource="{Binding MisSucursales}"
-                  DisplayMemberPath="Value"
-                  SelectedValuePath="Key"
-                  SelectedValue="{Binding MiSucursalDefault}"
-                  Width="250" HorizontalAlignment="Left"/>
-
+                        Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                        ItemsSource="{Binding MisSucursales}"
+                        DisplayMemberPath="Value"
+                        SelectedValuePath="Key"
+                        SelectedValue="{Binding MiSucursalDefault}"
+                        Width="250" HorizontalAlignment="Left"/>
+                    <Button Command="{Binding GuardarCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="0,15,0,0"
+                        ToolTip="Guardar esta sucursal como predeterminada">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ContentSave" Margin="0,0,8,0"/>
+                            <TextBlock Text="Guardar"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
+                
             </materialDesign:Card>
         </StackPanel>
         

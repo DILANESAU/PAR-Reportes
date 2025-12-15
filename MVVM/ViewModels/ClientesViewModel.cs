@@ -15,9 +15,15 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly ClientesService _clientesService;
         private readonly IDialogService _dialogService;
         public FilterService Filters { get; }
+        public List<int> AñosDisponibles { get; set; }
+        private int _anioSeleccionado;
+        public int AnioSeleccionado
+        {
+            get => _anioSeleccionado;
+            set { _anioSeleccionado = value; OnPropertyChanged(); /*CargarDatos();*/ }
+        }
 
         public ObservableCollection<ClienteRankingModel> ListaClientes { get; set; }
-        private List<ClienteRankingModel> _datosOriginales;
 
         // --- KPIs ---
         private int _clientesEnRiesgo;
@@ -33,22 +39,18 @@ namespace WPF_PAR.MVVM.ViewModels
             get => _isLoading;
             set { _isLoading = value; OnPropertyChanged(); }
         }
-
-        // --- COMANDOS ---
-        public RelayCommand OrdenarMejoresCommand { get; set; }
-        public RelayCommand OrdenarPeoresCommand { get; set; }
+        public RelayCommand ActualizarCommand { get; set; }
 
         public ClientesViewModel(IDialogService dialogService, FilterService filterService)
         {
             _clientesService = new ClientesService();
             _dialogService = dialogService;
             Filters = filterService;
-
+            int actual = DateTime.Now.Year;
+            AñosDisponibles = new List<int> { actual, actual - 1, actual - 2, actual - 3, actual - 4 };
+            AnioSeleccionado = actual;
+            ActualizarCommand = new RelayCommand(o => CargarDatos());
             ListaClientes = new ObservableCollection<ClienteRankingModel>();
-
-            OrdenarMejoresCommand = new RelayCommand(o => AplicarOrden("MEJORES"));
-            OrdenarPeoresCommand = new RelayCommand(o => AplicarOrden("RIESGO"));
-         
             CargarDatos();
         }
 
@@ -57,49 +59,26 @@ namespace WPF_PAR.MVVM.ViewModels
             IsLoading = true;
             try
             {
-                // Usamos filtro global (Rango exacto)
-                var datos = await _clientesService.ObtenerRankingClientes(
+                // Llamamos al nuevo método por Año
+                var datos = await _clientesService.ObtenerReporteAnualClientes(
                     Filters.SucursalId,
-                    Filters.FechaInicio,
-                    Filters.FechaFin
+                    AnioSeleccionado
                 );
 
-                _datosOriginales = datos;
+                ListaClientes.Clear();
+                foreach ( var c in datos ) ListaClientes.Add(c);
 
-                // KPI: Clientes que han bajado su compra vs año anterior
-                ClientesEnRiesgo = datos.Count(c => c.Diferencia < 0);
-
-                AplicarOrden("MEJORES");
+                // KPI simple
+                ClientesEnRiesgo = datos.Count(c => c.Tendencia == "DOWN");
             }
             catch ( Exception ex )
             {
-                _dialogService.ShowError("Error cargando clientes: " + ex.Message, "Error");
+                _dialogService.ShowError("Error: " + ex.Message, "Error");
             }
             finally
             {
                 IsLoading = false;
             }
-        }
-
-        private void AplicarOrden(string tipo)
-        {
-            if ( _datosOriginales == null ) return;
-
-            ListaClientes.Clear();
-            List<ClienteRankingModel> ordenados;
-
-            if ( tipo == "RIESGO" )
-            {
-                // Ordenar por diferencia ascendente (los más negativos primero)
-                ordenados = _datosOriginales.OrderBy(c => c.Diferencia).ToList();
-            }
-            else
-            {
-                // Ordenar por venta actual descendente (los mejores primero)
-                ordenados = _datosOriginales.OrderByDescending(c => c.VentaActual).ToList();
-            }
-
-            foreach ( var c in ordenados ) ListaClientes.Add(c);
         }
     }
 }
