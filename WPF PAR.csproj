@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk;Microsoft.NET.Sdk.Publish">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -9,6 +9,20 @@
     <UseWPF>true</UseWPF>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Assets\Productos.csv" />
+    <None Remove="Assets\Sucursales.csv" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\Productos.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Sucursales.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Themes\" />
@@ -39,12 +53,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Assets\Productos.csv">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Assets\Sucursales.csv">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Text;
+
 using WPF_PAR.MVVM.Models;
-using Microsoft.Data.SqlClient;
 
 namespace WPF_PAR.Services
 {
@@ -17,40 +17,40 @@ namespace WPF_PAR.Services
         }
         public async Task<List<VentaReporteModel>> ObtenerVentasBrutasRango(int sucursal, DateTime inicio, DateTime fin)
         {
+            // CORRECCIÓN: Quitamos el LEFT JOIN Cte para evitar duplicados si la tabla de clientes tiene basura.
+            // Usamos una subconsulta (SELECT TOP 1...) para obtener el nombre de forma segura.
             string query = @"
-            SELECT
-                v.FechaEmision,
-                vd.Sucursal,
-                ISNULL(c.Nombre, 'Cliente General') AS NombreCliente,
-                v.MovID,
-                vd.Articulo,
-                ISNULL(SUM(vd.Cantidad), 0) AS CantidadTotal,
-                ISNULL(SUM(vd.Cantidad * vd.Precio), 0) AS ImporteBrutoTotal,
-                ISNULL(SUM(vd.DescuentoImporte), 0) AS DescuentoTotal
-            FROM
-                VentaD vd
-                JOIN Venta v ON vd.ID = v.ID
-                LEFT JOIN Cte c ON v.Cliente = c.Cliente
-            WHERE
-                v.Estatus = 'CONCLUIDO'
-                AND vd.Sucursal = @Sucursal
-                AND vd.AplicaID IS NOT NULL
-                -- RANGO DE FECHAS
-                AND v.FechaEmision >= @Inicio 
-                AND v.FechaEmision < DATEADD(day, 1, @Fin)
-            GROUP BY
-                v.FechaEmision, vd.Sucursal, c.Nombre, v.MovID, vd.Articulo";
+    SELECT
+        v.FechaEmision,
+        vd.Sucursal,
+        ISNULL( (SELECT TOP 1 Nombre FROM Cte WHERE Cliente = v.Cliente), 'Cliente General') AS NombreCliente,
+        v.MovID,
+        vd.Articulo,
+        ISNULL(SUM(vd.Cantidad), 0) AS CantidadTotal,
+        ISNULL(SUM(vd.Cantidad * vd.Precio), 0) AS ImporteBrutoTotal,
+        ISNULL(SUM(vd.DescuentoImporte), 0) AS DescuentoTotal
+    FROM
+        VentaD vd
+        JOIN Venta v ON vd.ID = v.ID
+    WHERE
+        v.Estatus = 'CONCLUIDO'
+        AND vd.Sucursal = @Sucursal
+        AND vd.AplicaID IS NOT NULL
+        -- RANGO DE FECHAS
+        AND v.FechaEmision >= @Inicio 
+        AND v.FechaEmision < DATEADD(day, 1, @Fin)
+    GROUP BY
+        v.FechaEmision, vd.Sucursal, v.Cliente, v.MovID, vd.Articulo";
 
             var parametros = new Dictionary<string, object>
-        {
-            { "@Sucursal", sucursal },
-            { "@Inicio", inicio },
-            { "@Fin", fin }
-        };
+                {
+                    { "@Sucursal", sucursal },
+                    { "@Inicio", inicio },
+                    { "@Fin", fin }
+                };
 
             return await _sqlHelper.QueryAsync(query, parametros, lector =>
             {
-                // (Mismo mapeo seguro que hicimos antes)
                 decimal importeBruto = lector["ImporteBrutoTotal"] != DBNull.Value ? Convert.ToDecimal(lector["ImporteBrutoTotal"]) : 0m;
                 decimal descuento = lector["DescuentoTotal"] != DBNull.Value ? Convert.ToDecimal(lector["DescuentoTotal"]) : 0m;
                 double cantidad = lector["CantidadTotal"] != DBNull.Value ? Convert.ToDouble(lector["CantidadTotal"]) : 0d;
