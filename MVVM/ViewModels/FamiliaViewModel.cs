@@ -1,9 +1,7 @@
 ﻿using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
-
 using SkiaSharp;
-
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -82,6 +80,17 @@ namespace WPF_PAR.MVVM.ViewModels
             get => _granTotalLitros;
             set { _granTotalLitros = value; OnPropertyChanged(); }
         }
+        private bool _verPorLitros;
+        public bool VerPorLitros
+        {
+            get => _verPorLitros;
+            set
+            {
+                _verPorLitros = value;
+                OnPropertyChanged();
+                ActualizarGraficosPorSubLinea();
+            }
+        }
 
         private bool _isLoading;
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
@@ -142,14 +151,45 @@ namespace WPF_PAR.MVVM.ViewModels
             ResumenLineas = new ObservableCollection<LineaResumenModel>();
             TarjetasArquitectonica = new ObservableCollection<FamiliaResumenModel>();
             TarjetasEspecializada = new ObservableCollection<FamiliaResumenModel>();
+
             OrdenarVentaCommand = new RelayCommand(o => AplicarOrden("VENTA"));
             OrdenarNombreCommand = new RelayCommand(o => AplicarOrden("NOMBRE"));
 
             _ventasProcesadas = new List<VentaReporteModel>();
             _datosAnualesCache = new List<VentaReporteModel>();
 
+            // -----------------------------------------------------------------------
+            // CORRECCIÓN CRÍTICA: INICIALIZACIÓN DE GRÁFICOS
+            // Esto evita el "Object reference not set to an instance of an object"
+            // -----------------------------------------------------------------------
+
+            // 1. Inicializar Series vacías para que el gráfico no sea nulo al arrancar
+            SeriesDetalle = new ISeries[0];
+            SeriesTendencia = new ISeries[0];
+
+            // 2. Inicializar Ejes con propiedades de "Pintura" por defecto
+            // LiveCharts necesita saber de qué color pintar las letras aunque no haya datos aún.
+            EjeXTendencia = new Axis[]
+            {
+        new Axis
+        {
+            IsVisible = false,
+            LabelsPaint = new SolidColorPaint(SKColors.Black) // <--- ESTO EVITA EL CRASH
+        }
+            };
+
+            EjeYTendencia = new Axis[]
+            {
+        new Axis
+        {
+            IsVisible = true, // O false si prefieres ocultarlo al inicio
+            LabelsPaint = new SolidColorPaint(SKColors.Black), // <--- ESTO EVITA EL CRASH
+            TextSize = 12
+        }
+            };
+            // -----------------------------------------------------------------------
+
             InicializarTarjetasVacias();
-           
 
             ActualizarCommand = new RelayCommand(o => EjecutarReporte());
 
@@ -184,7 +224,6 @@ namespace WPF_PAR.MVVM.ViewModels
                 });
             }
         }
-
         public void CargarPorLinea(string linea)
         {
             _lineaActual = linea;
@@ -398,33 +437,86 @@ namespace WPF_PAR.MVVM.ViewModels
             Color = SKColors.Black,
             SKTypeface = SKTypeface.FromFamilyName("Arial")
         };
-        private void CalcularTendenciaAnual(string familia)
+        // REEMPLAZA EL MÉTODO DE TENDENCIA POR ESTE DE RANKING
+        private void CalcularTopProductos(List<VentaReporteModel> datos)
         {
-            var ventasFamiliaAnual = _datosAnualesCache
-                .Where(x => x.Familia == familia)
-                .GroupBy(x => x.FechaEmision.Month)
-                .Select(g => new { Mes = g.Key, Total = g.Sum(v => v.TotalVenta) })
+            var topProductos = datos
+                .GroupBy(x => x.Descripcion)
+                .Select(g => new
+                {
+                    NombreVisual = g.Key.Length > 25 ? g.Key.Substring(0, 22) + "..." : g.Key,
+                    Venta = g.Sum(v => v.TotalVenta),
+                    Litros = g.Sum(v => v.LitrosTotales)
+                })
+                // Ordenamos convirtiendo venta a double para evitar el error de tipos
+                .OrderByDescending(x => VerPorLitros ? x.Litros : ( double ) x.Venta)
+                .Take(5)
+                .Reverse()
                 .ToList();
 
-            var valores = new decimal[12];
-            foreach ( var v in ventasFamiliaAnual ) valores[v.Mes - 1] = v.Total;
-
-            SeriesTendencia = new ISeries[]
+            if ( !topProductos.Any() )
             {
-                new LineSeries<decimal>
-                {
-                    Name = "Tendencia",
-                    Values = valores,
-                    Stroke = new SolidColorPaint(SKColors.Orange) { StrokeThickness = 3 },
-                    GeometryFill = new SolidColorPaint(SKColors.Orange),
-                    GeometrySize = 8,
-                    Fill = null,
-                    XToolTipLabelFormatter = (p) => $"{p.Model:C0}"
-                }
-            };
+                SeriesTendencia = Array.Empty<ISeries>();
+                return;
+            }
 
-            EjeXTendencia = new Axis[] { new Axis { Labels = new[] { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" } } };
-            EjeYTendencia = new Axis[] { new Axis { Labeler = v => v.ToString("C0"), TextSize = 12 } };
+            if ( VerPorLitros )
+            {
+                // --- MODO LITROS (Naranja) ---
+                SeriesTendencia = new ISeries[]
+                {
+            new RowSeries<double>
+            {
+                Values = topProductos.Select(x => x.Litros).ToArray(),
+                Name = "Volumen",
+                Fill = new SolidColorPaint(SKColors.Orange),
+                
+                // CORRECCIÓN 1: Etiquetas dentro de la barra
+                DataLabelsPaint = new SolidColorPaint(SKColors.Black),
+                DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.End,
+                DataLabelsFormatter = p => $"{p.Model:N0} L", // <--- AGREGAR .PrimaryValue
+
+                // CORRECCIÓN 2: Tooltip al pasar el mouse
+                XToolTipLabelFormatter = p => $"{p.Model:N0} L"
+            }
+                };
+                // Eje X oculto
+                EjeXTendencia = new Axis[] { new Axis { IsVisible = false, Labeler = v => $"{v:N0}" } };
+            }
+            else
+            {
+                // --- MODO DINERO (Azul) ---
+                SeriesTendencia = new ISeries[]
+                {
+            new RowSeries<decimal>
+            {
+                Values = topProductos.Select(x => x.Venta).ToArray(),
+                Name = "Venta",
+                Fill = new SolidColorPaint(SKColors.DodgerBlue),
+
+                // CORRECCIÓN 1: Etiquetas dentro de la barra
+                DataLabelsPaint = new SolidColorPaint(SKColors.White),
+                DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.End,
+                DataLabelsFormatter = p => $"{p.Model:C0}", // <--- AGREGAR .PrimaryValue
+
+                // CORRECCIÓN 2: Tooltip al pasar el mouse
+                XToolTipLabelFormatter = p => $"{p.Model:C0}"
+            }
+                };
+                // Eje X oculto
+                EjeXTendencia = new Axis[] { new Axis { IsVisible = false, Labeler = v => $"{v:C0}" } };
+            }
+
+            // Eje Y (Nombres de productos)
+            EjeYTendencia = new Axis[]
+            {
+        new Axis
+        {
+            Labels = topProductos.Select(x => x.NombreVisual).ToArray(),
+            LabelsPaint = new SolidColorPaint(SKColors.Black),
+            TextSize = 12
+        }
+            };
 
             OnPropertyChanged(nameof(SeriesTendencia));
             OnPropertyChanged(nameof(EjeXTendencia));
@@ -499,77 +591,39 @@ namespace WPF_PAR.MVVM.ViewModels
         // MÉTODO PARA ACTUALIZAR GRÁFICOS (Actualizado para filtrar Tendencias)
         private void ActualizarGraficosPorSubLinea()
         {
+            // Si no hay datos base, no hacemos nada
             if ( _datosFamiliaActual == null ) return;
 
-            var datosFiltrados = _datosFamiliaActual;
+            // 1. Obtener el valor del filtro limpio
+            string filtro = SubLineaSeleccionada;
+            if ( string.IsNullOrEmpty(filtro) ) filtro = "TODAS";
 
-            // Filtro principal de datos (Tabla y Pastel)
-            if ( SubLineaSeleccionada != "TODAS" && !string.IsNullOrEmpty(SubLineaSeleccionada) )
+            List<VentaReporteModel> datosFiltrados;
+
+            // 2. Aplicar Filtro "A prueba de balas"
+            if ( filtro == "TODAS" )
             {
-                datosFiltrados = _datosFamiliaActual.Where(x => x.Linea == SubLineaSeleccionada).ToList();
+                datosFiltrados = _datosFamiliaActual.ToList();
+            }
+            else
+            {
+                // Comparamos ignorando mayúsculas y espacios vacíos al final
+                datosFiltrados = _datosFamiliaActual
+                    .Where(x => x.Linea != null &&
+                                x.Linea.Trim().Equals(filtro.Trim(), StringComparison.OrdinalIgnoreCase))
+                    .ToList();
             }
 
-            // 1. Actualizar Tabla
+            // 3. Actualizar la Tabla Visual (DataGrid)
+            // Importante: Creamos una NUEVA colección para forzar al DataGrid a repintarse
             DetalleVentas = new ObservableCollection<VentaReporteModel>(
                 datosFiltrados.OrderByDescending(x => x.TotalVenta)
             );
 
-            // 2. Actualizar Gráfico Pastel y Ranking
+            // 4. Actualizar Gráficos con los datos ya filtrados
             CalcularResumenPorLineas(datosFiltrados);
-
-            // 3. Actualizar Gráfico de Tendencia (Mensual)
-            // Pasamos el filtro seleccionado para que la línea también cambie
-            CalcularTendenciaAnual(TituloDetalle, SubLineaSeleccionada);
-        }
-        private void CalcularTendenciaAnual(string familia, string subLineaFiltro)
-        {
-            if ( _datosAnualesCache == null || !_datosAnualesCache.Any() )
-            {
-                // Si aún no carga, limpiar gráfico
-                SeriesTendencia = Array.Empty<ISeries>();
-                return;
-            }
-
-            // Filtramos el histórico global por la familia actual
-            IEnumerable<VentaReporteModel> source = _datosAnualesCache.Where(x => x.Familia == familia);
-
-            // Y si hay una sub-línea seleccionada (ej. Ecopar), filtramos también por ella
-            if ( subLineaFiltro != "TODAS" && !string.IsNullOrEmpty(subLineaFiltro) )
-            {
-                source = source.Where(x => x.Linea == subLineaFiltro);
-            }
-
-            var ventasFamiliaAnual = source
-                .GroupBy(x => x.FechaEmision.Month)
-                .Select(g => new { Mes = g.Key, Total = g.Sum(v => v.TotalVenta) })
-                .ToList();
-
-            // ... (El resto de la lógica de llenado del gráfico sigue igual) ...
-            // Solo asegúrate de usar 'ventasFamiliaAnual' que ya está filtrado
-
-            // (Ejemplo rápido de rellenado)
-            var valores = new ObservableCollection<double>();
-            for ( int i = 1; i <= 12; i++ )
-            {
-                var mesDatos = ventasFamiliaAnual.FirstOrDefault(x => x.Mes == i);
-                valores.Add(mesDatos != null ? ( double ) mesDatos.Total : 0);
-            }
-
-            SeriesTendencia = new ISeries[]
-                {
-                    new LineSeries<double>
-                        {
-                            Values = valores,
-                            Name = "Venta Mensual",
-                            Stroke = new SolidColorPaint(SKColors.Blue) { StrokeThickness = 3 },
-                            Fill = null,
-                            GeometrySize = 10
-                        }
-                };
-
-            // Configurar Ejes X e Y...
-            EjeXTendencia = new Axis[] { new Axis { Labels = new[] { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" } } };
-            EjeYTendencia = new Axis[] { new Axis { Labeler = value => value.ToString("C0") } };
+            
+            CalcularTopProductos(datosFiltrados);
         }
         public class DatoRanking
         {

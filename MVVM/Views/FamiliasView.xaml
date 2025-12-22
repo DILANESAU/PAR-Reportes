@@ -172,7 +172,7 @@
             <Grid Visibility="{Binding VerDetalle, Converter={StaticResource BoolToVis}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="380"/>
+                    <RowDefinition Height="450"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
@@ -193,7 +193,7 @@
 
                             <StackPanel VerticalAlignment="Center" Margin="10,0,0,0">
                                 <TextBlock Text="Filtrar Gráficos:" FontSize="10" Opacity="0.6" Margin="2,0,0,0"/>
-                                <ComboBox ItemsSource="{Binding SubLineasDisponibles}"
+                                <ComboBox ItemsSource="{Binding SubLineasDisponibles, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
                                           SelectedItem="{Binding SubLineaSeleccionada}"
                                           Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                           Width="220" Height="35" Padding="10,6"
@@ -232,13 +232,39 @@
 
                     <materialDesign:Card Grid.Column="1" Margin="10,0,10,0" UniformCornerRadius="10" Padding="15" Grid.ColumnSpan="2">
                         <Grid>
-                            <TextBlock Text="Tendencia Mensual (Global Familia)" FontWeight="Bold" Opacity="0.7"/>
-                            <lvc:CartesianChart Series="{Binding SeriesTendencia}" 
-                                                XAxes="{Binding EjeXTendencia}"
-                                                YAxes="{Binding EjeYTendencia}"
-                                                Margin="0,20,0,0"
-                                                TooltipTextSize="14"
-                                                TooltipTextPaint="{Binding TooltipTextPaint}"/>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Top 5 Productos" FontWeight="Bold" Opacity="0.7" VerticalAlignment="Center"/>
+
+                                    <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="CurrencyUsd" VerticalAlignment="Center" 
+                                             Foreground="{Binding VerPorLitros, Converter={StaticResource BoolToVis}, ConverterParameter=Inverted}"/>
+
+                                        <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                  IsChecked="{Binding VerPorLitros}"
+                                  Margin="5,0"/>
+
+                                        <materialDesign:PackIcon Kind="Beaker" VerticalAlignment="Center"
+                                             Foreground="{Binding VerPorLitros, Converter={StaticResource BoolToVis}}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" 
+                       Text="{Binding VerPorLitros, Converter={StaticResource BoolToVis}, StringFormat='Viendo: VOLUMEN'}" 
+                       FontSize="10" Opacity="0.5" FontWeight="Bold"/>
+                            </Grid>
+
+                            <lvc:CartesianChart Grid.Row="1" 
+                            Series="{Binding SeriesTendencia}" 
+                            XAxes="{Binding EjeXTendencia}"
+                            YAxes="{Binding EjeYTendencia}"
+                            TooltipTextSize="14"
+                            TooltipTextPaint="{Binding TooltipTextPaint}"/>
                         </Grid>
                     </materialDesign:Card>
 

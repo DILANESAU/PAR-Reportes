@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq; // Necesario para LINQ
 using System.Text;
 
 using WPF_PAR.Core;
@@ -8,6 +9,9 @@ namespace WPF_PAR.Services
 {
     public class FilterService : ObservableObject
     {
+        // --- EVENTO FALTANTE ---
+        public event Action OnFiltrosCambiados;
+        // -----------------------
 
         private int _sucursalId;
         public int SucursalId
@@ -19,9 +23,13 @@ namespace WPF_PAR.Services
                 {
                     _sucursalId = value;
                     OnPropertyChanged();
+                    // INVOCAR EL EVENTO AL CAMBIAR
+                    OnFiltrosCambiados?.Invoke();
                 }
             }
         }
+
+        // ... (Tus propiedades de fecha, agregando OnFiltrosCambiados?.Invoke() en los setters si quieres que refresquen también)
 
         private DateTime _fechaInicio;
         public DateTime FechaInicio
@@ -33,6 +41,7 @@ namespace WPF_PAR.Services
                 {
                     _fechaInicio = value;
                     OnPropertyChanged();
+                    // Opcional: OnFiltrosCambiados?.Invoke(); 
                 }
             }
         }
@@ -47,57 +56,45 @@ namespace WPF_PAR.Services
                 {
                     _fechaFin = value;
                     OnPropertyChanged();
+                    // Opcional: OnFiltrosCambiados?.Invoke(); 
                 }
             }
         }
-        // REFACTORIZACIÓN: Movemos la lista aquí para facilitar el binding
+
         private Dictionary<int, string> _listaSucursales;
         public Dictionary<int, string> ListaSucursales
         {
             get => _listaSucursales;
             set { _listaSucursales = value; OnPropertyChanged(); }
         }
+
         public FilterService(SucursalesService sucursalesService)
         {
-            // 1. Cargamos TODAS las sucursales del CSV/BD
+            // (Tu lógica de constructor estaba bien, se mantiene igual)
             var todas = sucursalesService.CargarSucursales();
 
-            // 2. Aplicamos el FILTRO de Seguridad
-            if ( Session.UsuarioActual.SucursalesPermitidas == null )
+            // ... resto de tu lógica de permisos ...
+            if ( Session.UsuarioActual?.SucursalesPermitidas == null )
             {
-                // Si es NULL (Admin), mostramos todas
                 ListaSucursales = todas;
             }
             else
             {
-                // Si tiene lista (aunque sea vacía), filtramos
                 ListaSucursales = todas
                     .Where(s => Session.UsuarioActual.SucursalesPermitidas.Contains(s.Key))
                     .ToDictionary(k => k.Key, v => v.Value);
             }
 
-            // 3. Configurar Fechas
+            // ... fechas y default ...
             DateTime hoy = DateTime.Now;
             FechaInicio = new DateTime(hoy.Year, hoy.Month, 1);
             FechaFin = hoy;
 
-            // 4. Seleccionar Sucursal por Defecto de forma segura
-            int defaultGuardada = Properties.Settings.Default.SucursalDefaultId;
-
-            if ( ListaSucursales.ContainsKey(defaultGuardada) )
-            {
-                SucursalId = defaultGuardada;
-            }
+            // Inicialización segura de SucursalId
+            if ( Properties.Settings.Default.SucursalDefaultId != 0 && ListaSucursales.ContainsKey(Properties.Settings.Default.SucursalDefaultId) )
+                SucursalId = Properties.Settings.Default.SucursalDefaultId;
             else if ( ListaSucursales.Count > 0 )
-            {
-                // Si la guardada no está permitida, seleccionamos la primera disponible
                 SucursalId = ListaSucursales.Keys.First();
-            }
-            else
-            {
-                // Caso extremo: Usuario sin permisos a NADA
-                SucursalId = 0;
-            }
         }
     }
 }

@@ -100,35 +100,13 @@
                         <Separator Margin="10,5" Opacity="0.3"/>
                         <TextBlock Text="REPORTES POR LÍNEA" FontSize="11" FontWeight="Bold" Opacity="0.5" Margin="20,10"/>
 
-                        <Expander HorizontalAlignment="Stretch" Background="Transparent">
-                            <Expander.Header>
-                                <StackPanel Orientation="Horizontal" Margin="-5,0,0,0">
-                                    <materialDesign:PackIcon Kind="HomeCity" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0" Opacity="0.7"/>
-                                    <TextBlock Text="Arquitectónica" VerticalAlignment="Center" FontSize="14"/>
-                                </StackPanel>
-                            </Expander.Header>
-                            <StackPanel>
-                                <Button Style="{StaticResource SubNavButton}" 
-                                        Command="{Binding NavegarLineaCommand}" 
-                                        CommandParameter="Arquitectonica"
-                                        Content="Ver Resumen"/>
+                        <Button Style="{StaticResource NavButton}" Command="{Binding FamiliaViewCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FormatPaint" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                <TextBlock Text="Familias y Productos" VerticalAlignment="Center"/>
                             </StackPanel>
-                        </Expander>
+                        </Button>
 
-                        <Expander HorizontalAlignment="Stretch" Background="Transparent">
-                            <Expander.Header>
-                                <StackPanel Orientation="Horizontal" Margin="-5,0,0,0">
-                                    <materialDesign:PackIcon Kind="Factory" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0" Opacity="0.7"/>
-                                    <TextBlock Text="Especializada" VerticalAlignment="Center" FontSize="14"/>
-                                </StackPanel>
-                            </Expander.Header>
-                            <StackPanel>
-                                <Button Style="{StaticResource SubNavButton}" 
-                                        Command="{Binding NavegarLineaCommand}" 
-                                        CommandParameter="Especializada"
-                                        Content="Ver Resumen"/>
-                            </StackPanel>
-                        </Expander>
                         <Button Style="{StaticResource NavButton}" Command="{Binding ClientesViewCommand}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Person" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
