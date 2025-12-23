@@ -226,7 +226,7 @@
                                           Margin="0,20,0,0"
                                           InitialRotation="-90"
                                           TooltipTextSize="16"  
-                                          TooltipTextPaint="{Binding TooltipTextPaint}"/>
+                                          />
                         </Grid>
                     </materialDesign:Card>
 
@@ -264,7 +264,7 @@
                             XAxes="{Binding EjeXTendencia}"
                             YAxes="{Binding EjeYTendencia}"
                             TooltipTextSize="14"
-                            TooltipTextPaint="{Binding TooltipTextPaint}"/>
+                           />
                         </Grid>
                     </materialDesign:Card>
 

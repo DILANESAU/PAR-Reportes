@@ -432,11 +432,6 @@ namespace WPF_PAR.MVVM.ViewModels
                 ToolTipLabelFormatter = (point) => $"{point.Context.Series.Name}: {point.Model:C2}"
             }).ToArray();
         }
-        public SolidColorPaint TooltipTextPaint { get; set; } = new SolidColorPaint
-        {
-            Color = SKColors.Black,
-            SKTypeface = SKTypeface.FromFamilyName("Arial")
-        };
         // REEMPLAZA EL MÉTODO DE TENDENCIA POR ESTE DE RANKING
         private void CalcularTopProductos(List<VentaReporteModel> datos)
         {
@@ -609,9 +604,8 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 // Comparamos ignorando mayúsculas y espacios vacíos al final
                 datosFiltrados = _datosFamiliaActual
-                    .Where(x => x.Linea != null &&
-                                x.Linea.Trim().Equals(filtro.Trim(), StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+            .Where(x => ( x.Linea ?? "" ).Trim().Equals(filtro.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
             }
 
             // 3. Actualizar la Tabla Visual (DataGrid)

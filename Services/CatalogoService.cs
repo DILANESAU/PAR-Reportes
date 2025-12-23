@@ -80,11 +80,23 @@ namespace WPF_PAR.Services
             result.Add(currentField);
             return result;
         }
+        // Services/CatalogoService.cs
+
         public ProductoInfo ObtenerInfo(string claveProducto)
         {
             if ( _catalogo.ContainsKey(claveProducto) ) return _catalogo[claveProducto];
 
-            return new ProductoInfo { FamiliaSimple = "Accesorios", Litros = 0 };
+            // CORRECCIÓN: Asignar valores por defecto a TODAS las propiedades de texto
+            // para evitar que sean null y causen errores al usar .Trim() o .ToUpper()
+            return new ProductoInfo
+            {
+                FamiliaSimple = "Accesorios",
+                Litros = 0,
+                Descripcion = "Producto (Sin Catálogo)",
+                Linea = "Sin Linea",
+                Color = "Sin Color",
+                FamiliaCsv = "Otros"
+            };
         }
     }
 }
