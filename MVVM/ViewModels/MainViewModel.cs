@@ -62,9 +62,6 @@ namespace WPF_PAR.MVVM.ViewModels
             FamiliaVM = familiaVM;
             ClientesVM = clientesVM;
             SettingsVM = settingsVM;
-
-            // Cargar sucursales para el combo global (respetando permisos si existieran)
-            // Aquí podrías filtrar usando Session.UsuarioActual.SucursalesPermitidas si quisieras
             ListaSucursales = filterService.ListaSucursales;
 
             // D. CONFIGURAR COMANDOS

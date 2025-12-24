@@ -33,6 +33,8 @@ namespace WPF_PAR
             services.AddSingleton<BusinessLogicService>();
             services.AddSingleton<SucursalesService>();
 
+            services.AddTransient<FamiliaLogicService>();
+            services.AddTransient<ChartService>();
             services.AddTransient<VentasServices>();
             services.AddTransient<ClientesService>();
             services.AddTransient<ReportesService>();
