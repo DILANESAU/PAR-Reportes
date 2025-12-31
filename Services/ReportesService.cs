@@ -70,12 +70,13 @@ namespace WPF_PAR.Services
         }
         public async Task<List<VentaReporteModel>> ObtenerHistoricoAnualPorArticulo(string ejercicio, string sucursal)
         {
-            // Traemos la venta de TODO EL AÑO, pero agrupada por Mes y Artículo.
-            // Esto es mucho más ligero que traer ticket por ticket.
+            // CORRECCIÓN: Ahora incluimos el Cliente en la agrupación
             string query = @"
         SELECT
             v.Periodo,
             vd.Articulo,
+            -- 1. AGREGAMOS EL NOMBRE DEL CLIENTE
+            ISNULL((SELECT TOP 1 Nombre FROM Cte WHERE Cliente = v.Cliente), 'Cliente General') AS NombreCliente,
             SUM(vd.Cantidad) AS CantidadTotal,
             ISNULL(SUM(vd.Cantidad * vd.Precio), 0) AS ImporteBrutoTotal,
             ISNULL(SUM(vd.DescuentoImporte), 0) AS DescuentoTotal
@@ -89,7 +90,9 @@ namespace WPF_PAR.Services
             v.Estatus = 'CONCLUIDO'
         GROUP BY
             v.Periodo,
-            vd.Articulo";
+            vd.Articulo,
+            v.Cliente -- 2. IMPORTANTE: Agrupar también por cliente para no mezclarlos
+        ";
 
             var parametros = new Dictionary<string, object>
     {
@@ -105,13 +108,22 @@ namespace WPF_PAR.Services
 
                 return new VentaReporteModel
                 {
-                    // Guardamos el Mes en una propiedad auxiliar o usamos FechaEmision (Dia 1 del mes)
+                    // Fecha (Día 1 del mes correspondiente)
                     FechaEmision = new DateTime(int.Parse(ejercicio), Convert.ToInt32(lector["Periodo"]), 1),
+
                     Articulo = lector["Articulo"].ToString().Trim(),
+
+                    // 3. ASIGNAMOS EL CLIENTE QUE AHORA SÍ VIENE DE SQL
+                    Cliente = lector["NombreCliente"].ToString(),
+
                     Cantidad = cantidad,
+
+                    // Calculamos Precio Unitario Promedio
                     PrecioUnitario = cantidad != 0 ? ( importeBruto / ( decimal ) cantidad ) : 0,
+
                     Descuento = descuento
-                    // TotalVenta se calcula solo en el modelo
+
+                    // TotalVenta y LitrosTotales se calcularán solos gracias a los cambios que hicimos en el Modelo
                 };
             });
         }

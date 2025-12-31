@@ -1,14 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
-
-using LiveChartsCore;
+﻿using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 
 using SkiaSharp;
+
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using System.Windows.Media;
 
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
@@ -23,59 +25,97 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly IDialogService _dialogService;
         public FilterService Filters { get; }
 
-        // --- PROPIEDADES DE DATOS ---
-        private decimal _totalVentas;
-        public decimal TotalVentas
+        // ---------------------------------------------------------
+        // 1. FILTROS Y COMANDOS
+        // ---------------------------------------------------------
+        public ObservableCollection<string> FiltrosFecha { get; set; }
+
+        private string _periodoSeleccionado;
+        public string PeriodoSeleccionado
         {
-            get => _totalVentas;
-            set { _totalVentas = value; OnPropertyChanged(); }
+            get => _periodoSeleccionado;
+            set
+            {
+                _periodoSeleccionado = value;
+                OnPropertyChanged();
+                // Aquí podrías lógica para cambiar Filters.FechaInicio/Fin según la selección
+                ActualizarCommand.Execute(null);
+            }
         }
 
-        private int _cantidadTransacciones;
-        public int CantidadTransacciones
-        {
-            get => _cantidadTransacciones;
-            set { _cantidadTransacciones = value; OnPropertyChanged(); }
-        }
+        public RelayCommand ActualizarCommand { get; set; }
+        public RelayCommand IrAVentasCommand { get; set; }
+        public RelayCommand IrAInventarioCommand { get; set; }
 
-        private string _topCliente;
-        public string TopCliente
-        {
-            get => _topCliente;
-            set { _topCliente = value; OnPropertyChanged(); }
-        }
+        // ---------------------------------------------------------
+        // 2. KPIs (Adaptados a tu lógica real)
+        // ---------------------------------------------------------
+        private decimal _kpiVentas;
+        public decimal KpiVentas { get => _kpiVentas; set { _kpiVentas = value; OnPropertyChanged(); } }
 
-        private bool _isLoading;
-        public bool IsLoading
-        {
-            get => _isLoading;
-            set { _isLoading = value; OnPropertyChanged(); }
-        }
+        private int _kpiTransacciones;
+        public int KpiTransacciones { get => _kpiTransacciones; set { _kpiTransacciones = value; OnPropertyChanged(); } }
 
-        // --- COLECCIONES Y GRÁFICOS ---
-        public ObservableCollection<VentasModel> ListaVentas { get; set; }
+        private int _kpiClientes;
+        public int KpiClientes { get => _kpiClientes; set { _kpiClientes = value; OnPropertyChanged(); } }
 
-        public ISeries[] SeriesGrafico { get; set; }
+        private int _kpiClientesNuevos;
+        public int KpiClientesNuevos { get => _kpiClientesNuevos; set { _kpiClientesNuevos = value; OnPropertyChanged(); } }
+
+        // ---------------------------------------------------------
+        // 3. GRÁFICOS
+        // ---------------------------------------------------------
+        // Usaremos tu lógica de 'Historico' para el gráfico principal
+        private ISeries[] _seriesVentas;
+        public ISeries[] SeriesVentas { get => _seriesVentas; set { _seriesVentas = value; OnPropertyChanged(); } } // Enlazado al XAML
+
         public Axis[] EjeX { get; set; }
         public Axis[] EjeY { get; set; }
 
-        public ISeries[] SeriesHistorico { get; set; }
-        public Axis[] EjeXHistorico { get; set; }
+        // ---------------------------------------------------------
+        // 4. LISTAS (Calculadas desde tus datos)
+        // ---------------------------------------------------------
+        public ObservableCollection<TopProductoItem> TopProductosList { get; set; }
+        public ObservableCollection<ClienteRecienteItem> UltimosClientesList { get; set; }
 
-        public RelayCommand ActualizarCommand { get; set; }
+        // Mantenemos tu lista original por si la usas en otra parte
+        public ObservableCollection<VentasModel> ListaVentas { get; set; }
 
-        // --- CONSTRUCTOR ---
+        // ---------------------------------------------------------
+        // 5. ESTADO
+        // ---------------------------------------------------------
+        private bool _isLoading;
+        public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
+
+        private bool _hayAlertas;
+        public bool HayAlertas { get => _hayAlertas; set { _hayAlertas = value; OnPropertyChanged(); } }
+
+        // ---------------------------------------------------------
+        // CONSTRUCTOR
+        // ---------------------------------------------------------
         public DashboardViewModel(VentasServices ventasService, IDialogService dialogService, FilterService filterService)
         {
             _dialogService = dialogService;
             Filters = filterService;
             _ventasService = ventasService;
 
+            // Inicialización
+            FiltrosFecha = new ObservableCollection<string> { "Hoy", "Esta Semana", "Este Mes", "Anual" };
+            TopProductosList = new ObservableCollection<TopProductoItem>();
+            UltimosClientesList = new ObservableCollection<ClienteRecienteItem>();
             ListaVentas = new ObservableCollection<VentasModel>();
+
+            // Comandos
             ActualizarCommand = new RelayCommand(o => CargarDatos());
+            IrAVentasCommand = new RelayCommand(o => System.Diagnostics.Debug.WriteLine("Navegar a Ventas")); // Aquí conectarías tu navegación
+            IrAInventarioCommand = new RelayCommand(o => System.Diagnostics.Debug.WriteLine("Navegar a Inventario"));
+
+            // Estilos base de Ejes
+            EjeX = new Axis[] { new Axis { LabelsPaint = new SolidColorPaint(SKColors.Gray) } };
+            EjeY = new Axis[] { new Axis { Labeler = v => $"{v:C0}", LabelsPaint = new SolidColorPaint(SKColors.Gray) } };
 
             // Carga inicial
-            CargarDatos();
+            PeriodoSeleccionado = "Este Mes"; // Esto lanzará ActualizarCommand
         }
 
         public async void CargarDatos()
@@ -83,7 +123,7 @@ namespace WPF_PAR.MVVM.ViewModels
             IsLoading = true;
             try
             {
-                // 1. Obtener Ventas del Rango (Diario/Tabla)
+                // 1. OBTENER DATOS REALES (Tu servicio)
                 var datosRango = await _ventasService.ObtenerVentasRangoAsync(
                     Filters.SucursalId,
                     Filters.FechaInicio,
@@ -92,20 +132,20 @@ namespace WPF_PAR.MVVM.ViewModels
 
                 ListaVentas = new ObservableCollection<VentasModel>(datosRango);
 
-                CalcularResumen(datosRango);
-                ConfigurarGraficoDiario(datosRango);
+                // 2. CALCULAR KPIs Y LISTAS (Lógica nueva con tus datos)
+                ProcesarDatosResumen(datosRango);
 
-                // 2. Obtener Histórico Anual (Usando el año de la fecha fin)
+                // 3. OBTENER HISTÓRICO PARA EL GRÁFICO (Tu servicio)
                 var datosAnuales = await _ventasService.ObtenerVentaAnualAsync(
                     Filters.SucursalId,
                     Filters.FechaFin.Year
                 );
 
-                ConfigurarGraficoHistorico(datosAnuales);
+                ConfigurarGraficoPrincipal(datosAnuales);
             }
             catch ( Exception ex )
             {
-                _dialogService.ShowError($"Error al cargar dashboard: {ex.Message}", "Error de Conexión");
+                _dialogService.ShowError($"Error al cargar dashboard: {ex.Message}", "Error");
             }
             finally
             {
@@ -113,80 +153,65 @@ namespace WPF_PAR.MVVM.ViewModels
             }
         }
 
-        private void CalcularResumen(List<VentasModel> datos)
+        private void ProcesarDatosResumen(List<VentasModel> datos)
         {
             if ( datos == null || !datos.Any() )
             {
-                TotalVentas = 0;
-                CantidadTransacciones = 0;
-                TopCliente = "Sin datos";
+                KpiVentas = 0;
+                KpiTransacciones = 0;
+                KpiClientes = 0;
+                TopProductosList.Clear(); // Nota: Aunque se llame TopProductosList, guardaremos Clientes aquí
+                UltimosClientesList.Clear();
                 return;
             }
 
-            TotalVentas = datos.Sum(x => x.PrecioTotal);
-            CantidadTransacciones = datos.Count;
+            // A. KPIs Básicos
+            KpiVentas = datos.Sum(x => x.PrecioTotal);
+            KpiTransacciones = datos.Count;
+            KpiClientes = datos.Select(x => x.Cliente).Distinct().Count();
 
-            var mejorCliente = datos
-                                .GroupBy(x => x.Cliente)
-                                .Select(g => new { Cliente = g.Key, Total = g.Sum(x => x.PrecioTotal) })
-                                .OrderByDescending(g => g.Total)
-                                .FirstOrDefault();
-
-            TopCliente = mejorCliente != null ? mejorCliente.Cliente : "N/A";
-        }
-
-        private void ConfigurarGraficoDiario(List<VentasModel> datos)
-        {
-            var ventasPorDia = datos
-                .GroupBy(x => x.Fecha.Day)
-                .OrderBy(g => g.Key)
-                .Select(g => new { Dia = g.Key, Monto = g.Sum(x => x.PrecioTotal) })
+            // B. CORRECCIÓN: CAMBIAR TOP PRODUCTOS POR TOP CLIENTES (VIP)
+            // Como VentasModel no tiene 'Descripcion', usamos 'Cliente'.
+            var topClientes = datos
+                .GroupBy(x => x.Cliente) // <--- Agrupamos por Cliente
+                .Select(g => new TopProductoItem
+                {
+                    // Usamos el nombre del cliente en lugar del producto
+                    Nombre = string.IsNullOrEmpty(g.Key) ? "Público General" : g.Key,
+                    Monto = g.Sum(x => x.PrecioTotal)
+                })
+                .OrderByDescending(x => x.Monto)
+                .Take(5)
                 .ToList();
 
-            if ( ventasPorDia.Count == 0 )
-            {
-                SeriesGrafico = Array.Empty<ISeries>();
-            }
-            else
-            {
-                SeriesGrafico = new ISeries[]
+            // Asignar Ranking
+            for ( int i = 0; i < topClientes.Count; i++ ) topClientes[i].Ranking = i + 1;
+
+            // Guardamos en la lista (visualizará Clientes en vez de Productos)
+            TopProductosList = new ObservableCollection<TopProductoItem>(topClientes);
+
+            // C. Generar Lista ÚLTIMOS CLIENTES (Clientes Recientes)
+            // Tomamos las últimas 5 ventas ordenadas por fecha
+            var ultimos = datos
+                .OrderByDescending(x => x.Fecha)
+                .Take(5) // Tomamos las últimas 5 transacciones
+                .Select(x => new ClienteRecienteItem
                 {
-                    new ColumnSeries<decimal>
-                    {
-                        Name = "Ventas",
-                        Values = ventasPorDia.Select(x => x.Monto).ToArray(),
-                        Fill = new SolidColorPaint(SKColors.CornflowerBlue),
-                        Rx = 6, Ry = 6,
-                        DataLabelsSize = 12,
-                        DataLabelsPaint = new SolidColorPaint(SKColors.Gray),
-                        DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Top,
-                        DataLabelsFormatter = (point) => point.Model.ToString("C0"),
-                        XToolTipLabelFormatter = (point) => $"{point.Model:C2}"
-                    }
-                };
-            }
+                    Nombre = string.IsNullOrEmpty(x.Cliente) ? "Público General" : x.Cliente,
+                    Fecha = x.Fecha,
+                    Iniciales = ObtenerIniciales(x.Cliente)
+                })
+                .ToList();
 
-            EjeX = new Axis[]
-            {
-                new Axis { Labels = ventasPorDia.Select(x => x.Dia.ToString()).ToArray(), Name = "Día" }
-            };
-
-            EjeY = new Axis[]
-            {
-                new Axis { Labeler = value => value.ToString("C0"), ShowSeparatorLines = true }
-            };
-
-            OnPropertyChanged(nameof(SeriesGrafico));
-            OnPropertyChanged(nameof(EjeX));
-            OnPropertyChanged(nameof(EjeY));
+            UltimosClientesList = new ObservableCollection<ClienteRecienteItem>(ultimos);
         }
 
-        private void ConfigurarGraficoHistorico(List<VentasModel> datosAnuales)
+        private void ConfigurarGraficoPrincipal(List<VentasModel> datosAnuales)
         {
+            // Reusamos tu lógica de mapeo mensual
             var valores = new decimal[12];
             var meses = new string[] { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
 
-            // Mapeamos los datos (Asumiendo que 'Mov' trae el número de mes 1-12)
             foreach ( var item in datosAnuales )
             {
                 if ( int.TryParse(item.Mov, out int mes) && mes >= 1 && mes <= 12 )
@@ -195,27 +220,48 @@ namespace WPF_PAR.MVVM.ViewModels
                 }
             }
 
-            SeriesHistorico = new ISeries[]
+            SeriesVentas = new ISeries[]
             {
                 new LineSeries<decimal>
                 {
                     Name = "Venta Mensual",
                     Values = valores,
-                    Fill = new SolidColorPaint(SKColors.CornflowerBlue.WithAlpha(50)),
-                    Stroke = new SolidColorPaint(SKColors.CornflowerBlue) { StrokeThickness = 4 },
-                    GeometrySize = 10,
-                    GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 3 },
-                    XToolTipLabelFormatter = (p) => $"{p.Model:C0}"
+                    Fill = new SolidColorPaint(SKColors.CornflowerBlue.WithAlpha(30)), // Relleno moderno
+                    Stroke = new SolidColorPaint(SKColors.CornflowerBlue) { StrokeThickness = 3 },
+                    GeometrySize = 8,
+                    GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 2 }
                 }
             };
 
-            EjeXHistorico = new Axis[]
+            EjeX = new Axis[]
             {
                 new Axis { Labels = meses, LabelsPaint = new SolidColorPaint(SKColors.Gray) }
             };
-
-            OnPropertyChanged(nameof(SeriesHistorico));
-            OnPropertyChanged(nameof(EjeXHistorico));
         }
+
+        // Helper para las bolitas de colores
+        private string ObtenerIniciales(string nombre)
+        {
+            if ( string.IsNullOrWhiteSpace(nombre) ) return "?";
+            var partes = nombre.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if ( partes.Length == 0 ) return "?";
+            if ( partes.Length == 1 ) return partes[0].Substring(0, Math.Min(2, partes[0].Length)).ToUpper();
+            return ( partes[0][0].ToString() + partes[1][0].ToString() ).ToUpper();
+        }
+    }
+
+    // --- MODELOS AUXILIARES PARA EL DASHBOARD ---
+    public class TopProductoItem
+    {
+        public int Ranking { get; set; }
+        public string Nombre { get; set; }
+        public decimal Monto { get; set; }
+    }
+
+    public class ClienteRecienteItem
+    {
+        public string Iniciales { get; set; }
+        public string Nombre { get; set; }
+        public DateTime Fecha { get; set; }
     }
 }
