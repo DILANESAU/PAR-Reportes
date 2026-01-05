@@ -1,16 +1,12 @@
 ﻿using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
-using LiveChartsCore.SkiaSharpView.Painting;
-
-using SkiaSharp;
 
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Input;
-using System.Windows.Media;
+using System.Windows.Media; // Para Brushes
 
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
@@ -21,14 +17,17 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class DashboardViewModel : ObservableObject
     {
-        private readonly VentasServices _ventasService;
+        private readonly ReportesService _reportesService;
+        private readonly CatalogoService _catalogoService;
+        private readonly ChartService _chartService;
         private readonly IDialogService _dialogService;
+
         public FilterService Filters { get; }
 
         // ---------------------------------------------------------
-        // 1. FILTROS Y COMANDOS
+        // 1. SELECTOR DE PERIODOS (MODO HÍBRIDO)
         // ---------------------------------------------------------
-        public ObservableCollection<string> FiltrosFecha { get; set; }
+        public ObservableCollection<string> ListaPeriodos { get; set; }
 
         private string _periodoSeleccionado;
         public string PeriodoSeleccionado
@@ -36,116 +35,246 @@ namespace WPF_PAR.MVVM.ViewModels
             get => _periodoSeleccionado;
             set
             {
-                _periodoSeleccionado = value;
-                OnPropertyChanged();
-                // Aquí podrías lógica para cambiar Filters.FechaInicio/Fin según la selección
-                ActualizarCommand.Execute(null);
+                if ( _periodoSeleccionado != value )
+                {
+                    _periodoSeleccionado = value;
+                    OnPropertyChanged();
+                    // Al cambiar el combo, calculamos fechas y recargamos
+                    AplicarFiltroPeriodo(value);
+                }
             }
         }
 
-        public RelayCommand ActualizarCommand { get; set; }
-        public RelayCommand IrAVentasCommand { get; set; }
-        public RelayCommand IrAInventarioCommand { get; set; }
+        // ---------------------------------------------------------
+        // 2. KPIs CON COMPARATIVA
+        // ---------------------------------------------------------
+        private decimal _granTotalVenta;
+        public decimal GranTotalVenta { get => _granTotalVenta; set { _granTotalVenta = value; OnPropertyChanged(); OnPropertyChanged(nameof(TieneDatos)); } }
+
+        private double _granTotalLitros;
+        public double GranTotalLitros { get => _granTotalLitros; set { _granTotalLitros = value; OnPropertyChanged(); } }
+
+        // Propiedades para el indicador de Crecimiento vs Año Anterior
+        private decimal _variacionDinero;
+        public decimal VariacionDinero { get => _variacionDinero; set { _variacionDinero = value; OnPropertyChanged(); } }
+
+        private double _variacionPorcentaje;
+        public double VariacionPorcentaje { get => _variacionPorcentaje; set { _variacionPorcentaje = value; OnPropertyChanged(); } }
+
+        private bool _esCrecimientoPositivo;
+        public bool EsCrecimientoPositivo { get => _esCrecimientoPositivo; set { _esCrecimientoPositivo = value; OnPropertyChanged(); } }
+
+        public bool TieneDatos => GranTotalVenta > 0;
 
         // ---------------------------------------------------------
-        // 2. KPIs (Adaptados a tu lógica real)
+        // 3. DATOS VISUALES
         // ---------------------------------------------------------
-        private decimal _kpiVentas;
-        public decimal KpiVentas { get => _kpiVentas; set { _kpiVentas = value; OnPropertyChanged(); } }
+        private ISeries[] _seriesFamilias;
+        public ISeries[] SeriesFamilias { get => _seriesFamilias; set { _seriesFamilias = value; OnPropertyChanged(); } }
 
-        private int _kpiTransacciones;
-        public int KpiTransacciones { get => _kpiTransacciones; set { _kpiTransacciones = value; OnPropertyChanged(); } }
+        private ObservableCollection<ClienteResumenItem> _topClientesList;
+        public ObservableCollection<ClienteResumenItem> TopClientesList
+        {
+            get => _topClientesList;
+            set { _topClientesList = value; OnPropertyChanged(); }
+        }
 
-        private int _kpiClientes;
-        public int KpiClientes { get => _kpiClientes; set { _kpiClientes = value; OnPropertyChanged(); } }
-
-        private int _kpiClientesNuevos;
-        public int KpiClientesNuevos { get => _kpiClientesNuevos; set { _kpiClientesNuevos = value; OnPropertyChanged(); } }
-
-        // ---------------------------------------------------------
-        // 3. GRÁFICOS
-        // ---------------------------------------------------------
-        // Usaremos tu lógica de 'Historico' para el gráfico principal
-        private ISeries[] _seriesVentas;
-        public ISeries[] SeriesVentas { get => _seriesVentas; set { _seriesVentas = value; OnPropertyChanged(); } } // Enlazado al XAML
-
-        public Axis[] EjeX { get; set; }
-        public Axis[] EjeY { get; set; }
-
-        // ---------------------------------------------------------
-        // 4. LISTAS (Calculadas desde tus datos)
-        // ---------------------------------------------------------
-        public ObservableCollection<TopProductoItem> TopProductosList { get; set; }
-        public ObservableCollection<ClienteRecienteItem> UltimosClientesList { get; set; }
-
-        // Mantenemos tu lista original por si la usas en otra parte
-        public ObservableCollection<VentasModel> ListaVentas { get; set; }
-
-        // ---------------------------------------------------------
-        // 5. ESTADO
-        // ---------------------------------------------------------
         private bool _isLoading;
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
 
-        private bool _hayAlertas;
-        public bool HayAlertas { get => _hayAlertas; set { _hayAlertas = value; OnPropertyChanged(); } }
+        public RelayCommand ActualizarCommand { get; set; }
 
-        // ---------------------------------------------------------
-        // CONSTRUCTOR
-        // ---------------------------------------------------------
-        public DashboardViewModel(VentasServices ventasService, IDialogService dialogService, FilterService filterService)
+        public DashboardViewModel(
+            ReportesService reportesService,
+            CatalogoService catalogoService,
+            ChartService chartService,
+            FilterService filterService,
+            IDialogService dialogService)
         {
-            _dialogService = dialogService;
+            _reportesService = reportesService;
+            _catalogoService = catalogoService;
+            _chartService = chartService;
             Filters = filterService;
-            _ventasService = ventasService;
+            _dialogService = dialogService;
 
-            // Inicialización
-            FiltrosFecha = new ObservableCollection<string> { "Hoy", "Esta Semana", "Este Mes", "Anual" };
-            TopProductosList = new ObservableCollection<TopProductoItem>();
-            UltimosClientesList = new ObservableCollection<ClienteRecienteItem>();
-            ListaVentas = new ObservableCollection<VentasModel>();
+            // Inicializar Listas
+            TopClientesList = new ObservableCollection<ClienteResumenItem>();
+            SeriesFamilias = new ISeries[0];
 
-            // Comandos
+            // Opciones del Modo Híbrido
+            ListaPeriodos = new ObservableCollection<string>
+            {
+                "Hoy",
+                "Ayer",
+                "Esta Semana",
+                "Este Mes",
+                "Mes Anterior",
+                "Año en Curso"
+            };
+
             ActualizarCommand = new RelayCommand(o => CargarDatos());
-            IrAVentasCommand = new RelayCommand(o => System.Diagnostics.Debug.WriteLine("Navegar a Ventas")); // Aquí conectarías tu navegación
-            IrAInventarioCommand = new RelayCommand(o => System.Diagnostics.Debug.WriteLine("Navegar a Inventario"));
 
-            // Estilos base de Ejes
-            EjeX = new Axis[] { new Axis { LabelsPaint = new SolidColorPaint(SKColors.Gray) } };
-            EjeY = new Axis[] { new Axis { Labeler = v => $"{v:C0}", LabelsPaint = new SolidColorPaint(SKColors.Gray) } };
+            // Selección inicial (dispara la carga)
+            PeriodoSeleccionado = "Este Mes";
+        }
 
-            // Carga inicial
-            PeriodoSeleccionado = "Este Mes"; // Esto lanzará ActualizarCommand
+        private void AplicarFiltroPeriodo(string periodo)
+        {
+            DateTime hoy = DateTime.Today;
+
+            switch ( periodo )
+            {
+                case "Hoy":
+                    Filters.FechaInicio = hoy;
+                    Filters.FechaFin = hoy;
+                    break;
+                case "Ayer":
+                    Filters.FechaInicio = hoy.AddDays(-1);
+                    Filters.FechaFin = hoy.AddDays(-1);
+                    break;
+                case "Esta Semana":
+                    // Lunes de esta semana
+                    int delta = DayOfWeek.Monday - hoy.DayOfWeek;
+                    if ( delta > 0 ) delta -= 7;
+                    Filters.FechaInicio = hoy.AddDays(delta);
+                    Filters.FechaFin = hoy;
+                    break;
+                case "Este Mes":
+                    Filters.FechaInicio = new DateTime(hoy.Year, hoy.Month, 1);
+                    Filters.FechaFin = hoy;
+                    break;
+                case "Mes Anterior":
+                    var mesAnterior = hoy.AddMonths(-1);
+                    Filters.FechaInicio = new DateTime(mesAnterior.Year, mesAnterior.Month, 1);
+                    Filters.FechaFin = new DateTime(mesAnterior.Year, mesAnterior.Month, DateTime.DaysInMonth(mesAnterior.Year, mesAnterior.Month));
+                    break;
+                case "Año en Curso":
+                    Filters.FechaInicio = new DateTime(hoy.Year, 1, 1);
+                    Filters.FechaFin = hoy;
+                    break;
+            }
+
+            // Recargamos datos automáticamente
+            CargarDatos();
         }
 
         public async void CargarDatos()
         {
+            if ( IsLoading ) return;
             IsLoading = true;
+
             try
             {
-                // 1. OBTENER DATOS REALES (Tu servicio)
-                var datosRango = await _ventasService.ObtenerVentasRangoAsync(
-                    Filters.SucursalId,
-                    Filters.FechaInicio,
-                    Filters.FechaFin
-                );
+                // FECHAS ACTUALES
+                var inicio = Filters.FechaInicio;
+                var fin = Filters.FechaFin;
 
-                ListaVentas = new ObservableCollection<VentasModel>(datosRango);
+                // FECHAS AÑO ANTERIOR (Para comparar peras con peras)
+                var inicioPasado = inicio.AddYears(-1);
+                var finPasado = fin.AddYears(-1);
 
-                // 2. CALCULAR KPIs Y LISTAS (Lógica nueva con tus datos)
-                ProcesarDatosResumen(datosRango);
+                // --- 1. EJECUTAMOS DOS CONSULTAS EN PARALELO ---
+                var taskActual = _reportesService.ObtenerVentasBrutasRango(Filters.SucursalId, inicio, fin);
+                var taskPasado = _reportesService.ObtenerVentasBrutasRango(Filters.SucursalId, inicioPasado, finPasado);
 
-                // 3. OBTENER HISTÓRICO PARA EL GRÁFICO (Tu servicio)
-                var datosAnuales = await _ventasService.ObtenerVentaAnualAsync(
-                    Filters.SucursalId,
-                    Filters.FechaFin.Year
-                );
+                await Task.WhenAll(taskActual, taskPasado);
 
-                ConfigurarGraficoPrincipal(datosAnuales);
+                var ventasActuales = taskActual.Result;
+                var ventasPasadas = taskPasado.Result;
+
+                // --- 2. PROCESAMIENTO ---
+                var resultado = await Task.Run(() =>
+                {
+                    if ( ventasActuales == null || !ventasActuales.Any() )
+                        return new DashboardResult { EsVacio = true };
+
+                    // Enriquecer datos actuales
+                    foreach ( var v in ventasActuales )
+                    {
+                        var info = _catalogoService.ObtenerInfo(v.Articulo);
+                        v.Familia = info.FamiliaSimple;
+                        v.LitrosUnitarios = info.Litros;
+                    }
+
+                    // Cálculos Actuales
+                    var ventasFiltradas = ventasActuales
+                        .Where(x => x.Familia != "FERRETERIA" && x.Familia != "VARIOS")
+                        .ToList();
+
+                    decimal totalDinero = ventasFiltradas.Sum(x => x.TotalVenta);
+                    double totalLitros = ventasFiltradas.Sum(x => x.LitrosTotales);
+
+                    // Cálculo Pasado (Solo necesitamos el total dinero para comparar)
+                    decimal totalDineroPasado = 0;
+                    if ( ventasPasadas != null )
+                    {
+                        totalDineroPasado = ventasPasadas
+                            .Where(x => !_catalogoService.EsFerreteria(x.Articulo)) // Filtro rápido
+                            .Sum(x => x.TotalVenta);
+                    }
+
+                    // Datos para Gráficos
+                    var porFamilia = ventasFiltradas
+                        .GroupBy(x => x.Familia)
+                        .Select(g => new LineaResumenModel
+                        { NombreLinea = g.Key, VentaTotal = g.Sum(x => x.TotalVenta) })
+                        .OrderByDescending(x => x.VentaTotal).ToList();
+
+                    var porCliente = ventasFiltradas
+                        .GroupBy(x => x.Cliente)
+                        .Select(g => new ClienteResumenItem
+                        {
+                            Nombre = string.IsNullOrEmpty(g.Key) ? "Público General" : g.Key,
+                            Monto = g.Sum(x => x.TotalVenta),
+                            Transacciones = g.Count()
+                        })
+                        .OrderByDescending(x => x.Monto).Take(10).ToList();
+
+                    for ( int i = 0; i < porCliente.Count; i++ ) porCliente[i].Ranking = i + 1;
+
+                    return new DashboardResult
+                    {
+                        EsVacio = false,
+                        TotalVenta = totalDinero,
+                        TotalVentaPasada = totalDineroPasado, // Dato histórico
+                        TotalLitros = totalLitros,
+                        DatosFamilia = porFamilia,
+                        DatosClientes = porCliente
+                    };
+                });
+
+                // --- 3. ACTUALIZACIÓN UI ---
+                if ( resultado.EsVacio )
+                {
+                    GranTotalVenta = 0;
+                    GranTotalLitros = 0;
+                    VariacionDinero = 0;
+                    VariacionPorcentaje = 0;
+                    SeriesFamilias = new ISeries[0];
+                    TopClientesList = new ObservableCollection<ClienteResumenItem>();
+                }
+                else
+                {
+                    GranTotalVenta = resultado.TotalVenta;
+                    GranTotalLitros = resultado.TotalLitros;
+
+                    // Lógica Comparativa (Growth Rate)
+                    decimal diferencia = resultado.TotalVenta - resultado.TotalVentaPasada;
+                    VariacionDinero = Math.Abs(diferencia);
+                    EsCrecimientoPositivo = diferencia >= 0;
+
+                    if ( resultado.TotalVentaPasada > 0 )
+                        VariacionPorcentaje = ( double ) ( diferencia / resultado.TotalVentaPasada );
+                    else
+                        VariacionPorcentaje = 1; // 100% si antes era 0
+
+                    SeriesFamilias = _chartService.GenerarPieChart(resultado.DatosFamilia);
+                    TopClientesList = new ObservableCollection<ClienteResumenItem>(resultado.DatosClientes);
+                }
             }
             catch ( Exception ex )
             {
-                _dialogService.ShowError($"Error al cargar dashboard: {ex.Message}", "Error");
+                _dialogService.ShowError($"Error: {ex.Message}", "Error");
             }
             finally
             {
@@ -153,115 +282,24 @@ namespace WPF_PAR.MVVM.ViewModels
             }
         }
 
-        private void ProcesarDatosResumen(List<VentasModel> datos)
+        private class DashboardResult
         {
-            if ( datos == null || !datos.Any() )
-            {
-                KpiVentas = 0;
-                KpiTransacciones = 0;
-                KpiClientes = 0;
-                TopProductosList.Clear(); // Nota: Aunque se llame TopProductosList, guardaremos Clientes aquí
-                UltimosClientesList.Clear();
-                return;
-            }
-
-            // A. KPIs Básicos
-            KpiVentas = datos.Sum(x => x.PrecioTotal);
-            KpiTransacciones = datos.Count;
-            KpiClientes = datos.Select(x => x.Cliente).Distinct().Count();
-
-            // B. CORRECCIÓN: CAMBIAR TOP PRODUCTOS POR TOP CLIENTES (VIP)
-            // Como VentasModel no tiene 'Descripcion', usamos 'Cliente'.
-            var topClientes = datos
-                .GroupBy(x => x.Cliente) // <--- Agrupamos por Cliente
-                .Select(g => new TopProductoItem
-                {
-                    // Usamos el nombre del cliente en lugar del producto
-                    Nombre = string.IsNullOrEmpty(g.Key) ? "Público General" : g.Key,
-                    Monto = g.Sum(x => x.PrecioTotal)
-                })
-                .OrderByDescending(x => x.Monto)
-                .Take(5)
-                .ToList();
-
-            // Asignar Ranking
-            for ( int i = 0; i < topClientes.Count; i++ ) topClientes[i].Ranking = i + 1;
-
-            // Guardamos en la lista (visualizará Clientes en vez de Productos)
-            TopProductosList = new ObservableCollection<TopProductoItem>(topClientes);
-
-            // C. Generar Lista ÚLTIMOS CLIENTES (Clientes Recientes)
-            // Tomamos las últimas 5 ventas ordenadas por fecha
-            var ultimos = datos
-                .OrderByDescending(x => x.Fecha)
-                .Take(5) // Tomamos las últimas 5 transacciones
-                .Select(x => new ClienteRecienteItem
-                {
-                    Nombre = string.IsNullOrEmpty(x.Cliente) ? "Público General" : x.Cliente,
-                    Fecha = x.Fecha,
-                    Iniciales = ObtenerIniciales(x.Cliente)
-                })
-                .ToList();
-
-            UltimosClientesList = new ObservableCollection<ClienteRecienteItem>(ultimos);
-        }
-
-        private void ConfigurarGraficoPrincipal(List<VentasModel> datosAnuales)
-        {
-            // Reusamos tu lógica de mapeo mensual
-            var valores = new decimal[12];
-            var meses = new string[] { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
-
-            foreach ( var item in datosAnuales )
-            {
-                if ( int.TryParse(item.Mov, out int mes) && mes >= 1 && mes <= 12 )
-                {
-                    valores[mes - 1] = item.PrecioTotal;
-                }
-            }
-
-            SeriesVentas = new ISeries[]
-            {
-                new LineSeries<decimal>
-                {
-                    Name = "Venta Mensual",
-                    Values = valores,
-                    Fill = new SolidColorPaint(SKColors.CornflowerBlue.WithAlpha(30)), // Relleno moderno
-                    Stroke = new SolidColorPaint(SKColors.CornflowerBlue) { StrokeThickness = 3 },
-                    GeometrySize = 8,
-                    GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 2 }
-                }
-            };
-
-            EjeX = new Axis[]
-            {
-                new Axis { Labels = meses, LabelsPaint = new SolidColorPaint(SKColors.Gray) }
-            };
-        }
-
-        // Helper para las bolitas de colores
-        private string ObtenerIniciales(string nombre)
-        {
-            if ( string.IsNullOrWhiteSpace(nombre) ) return "?";
-            var partes = nombre.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if ( partes.Length == 0 ) return "?";
-            if ( partes.Length == 1 ) return partes[0].Substring(0, Math.Min(2, partes[0].Length)).ToUpper();
-            return ( partes[0][0].ToString() + partes[1][0].ToString() ).ToUpper();
+            public bool EsVacio { get; set; }
+            public decimal TotalVenta { get; set; }
+            public decimal TotalVentaPasada { get; set; }
+            public double TotalLitros { get; set; }
+            public List<LineaResumenModel> DatosFamilia { get; set; }
+            public List<ClienteResumenItem> DatosClientes { get; set; }
         }
     }
 
-    // --- MODELOS AUXILIARES PARA EL DASHBOARD ---
-    public class TopProductoItem
+    public class ClienteResumenItem
+
     {
         public int Ranking { get; set; }
         public string Nombre { get; set; }
         public decimal Monto { get; set; }
-    }
+        public int Transacciones { get; set; }
 
-    public class ClienteRecienteItem
-    {
-        public string Iniciales { get; set; }
-        public string Nombre { get; set; }
-        public DateTime Fecha { get; set; }
     }
 }

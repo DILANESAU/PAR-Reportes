@@ -104,18 +104,23 @@ namespace WPF_PAR.Services
                 };
             }
 
+            // 1. Preparamos los datos SIN TRUNCAR el nombre
             var topProductos = datos
                 .GroupBy(x => x.Descripcion)
                 .Select(g => new
                 {
-                    NombreVisual = g.Key.Length > 25 ? g.Key.Substring(0, 22) + "..." : g.Key,
+                    // CAMBIO: Usamos el nombre completo. Si es EXCESIVAMENTE largo, LiveCharts lo manejará o se verá en el Tooltip.
+                    NombreCompleto = g.Key,
                     Venta = g.Sum(v => v.TotalVenta),
                     Litros = g.Sum(v => v.LitrosTotales)
                 })
                 .OrderByDescending(x => verPorLitros ? x.Litros : ( double ) x.Venta)
                 .Take(5)
-                .Reverse() 
+                .Reverse()
                 .ToList();
+
+            // Guardamos los nombres en una lista para usarla en el Tooltip
+            var nombresEje = topProductos.Select(x => x.NombreCompleto).ToArray();
 
             ISeries[] series;
             Axis[] ejeX;
@@ -132,7 +137,9 @@ namespace WPF_PAR.Services
                         DataLabelsPaint = new SolidColorPaint(SKColors.Black),
                         DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.End,
                         DataLabelsFormatter = p => $"{p.Model:N0} L",
-                        XToolTipLabelFormatter = p => $"{p.Model:N0} L"
+                        
+                        // CAMBIO: El tooltip ahora busca el nombre en nuestra lista usando el índice de la barra
+                        XToolTipLabelFormatter = p => $"{nombresEje[p.Index]}: {p.Model:N0} L"
                     }
                 };
                 ejeX = new Axis[] { new Axis { IsVisible = false, Labeler = v => $"{v:N0}" } };
@@ -149,7 +156,9 @@ namespace WPF_PAR.Services
                         DataLabelsPaint = new SolidColorPaint(SKColors.White),
                         DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.End,
                         DataLabelsFormatter = p => $"{p.Model:C0}",
-                        XToolTipLabelFormatter = p => $"{p.Model:C0}"
+                        
+                        // CAMBIO: Tooltip completo con Nombre + Dinero
+                        XToolTipLabelFormatter = p => $"{nombresEje[p.Index]}: {p.Model:C0}"
                     }
                 };
                 ejeX = new Axis[] { new Axis { IsVisible = false, Labeler = v => $"{v:C0}" } };
@@ -159,7 +168,7 @@ namespace WPF_PAR.Services
             {
                 new Axis
                 {
-                    Labels = topProductos.Select(x => x.NombreVisual).ToArray(),
+                    Labels = nombresEje, // Usamos los nombres completos en el eje
                     LabelsPaint = new SolidColorPaint(SKColors.Black),
                     TextSize = 12
                 }

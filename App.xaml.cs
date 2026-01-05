@@ -1,11 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-
 using System.Configuration;
 using System.Data;
 using System.Windows;
-
 using WPF_PAR.MVVM.ViewModels;
-
+using WPF_PAR.Repositories;
 using WPF_PAR.Services;
 
 using WPF_PAR.Services.Interfaces;
@@ -28,11 +26,18 @@ namespace WPF_PAR
 
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<ISnackbarService, SnackbarService>();
+            services.AddTransient<IReportesRepository, ReportesRepository>();
+            services.AddTransient<IClientesRepository, ClientesRepository>();
+            services.AddTransient<IVentasRepository, VentasRepository>();
+
+            services.AddTransient<IAuthRepository>(provider =>
+                new AuthRepository(new SqlHelper("AuthConnection")));
+
 
             services.AddSingleton<FilterService>();
             services.AddSingleton<BusinessLogicService>();
             services.AddSingleton<SucursalesService>();
-
+            services.AddTransient<SqlHelper>();
             services.AddTransient<FamiliaLogicService>();
             services.AddTransient<ChartService>();
             services.AddTransient<VentasServices>();
@@ -41,7 +46,6 @@ namespace WPF_PAR
             services.AddTransient<CatalogoService>();
             services.AddTransient<AuthService>();
             services.AddTransient<ClientesLogicService>(); 
-
             services.AddTransient<MainViewModel>();
             services.AddTransient<DashboardViewModel>();
             services.AddTransient<FamiliaViewModel>();

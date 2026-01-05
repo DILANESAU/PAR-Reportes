@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
-
+﻿using System.Collections.ObjectModel;
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
@@ -13,15 +8,9 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class ClientesViewModel : ObservableObject
     {
-        private readonly ReportesService _reportesService;
-        private readonly ClientesLogicService _logicService; // Reusamos la lógica de cálculo
+        private readonly ClientesService _clientesService;
+        private readonly ClientesLogicService _logicService;
         private readonly IDialogService _dialogService;
-
-        // ---------------------------------------------------------
-        // PROPIEDADES
-        // ---------------------------------------------------------
-
-        // La lista principal de tarjetas (Q1, Q2...)
         private ObservableCollection<SubLineaPerformanceModel> _listaClientes;
         public ObservableCollection<SubLineaPerformanceModel> ListaClientes
         {
@@ -29,23 +18,17 @@ namespace WPF_PAR.MVVM.ViewModels
             set { _listaClientes = value; OnPropertyChanged(); }
         }
 
-        // Datos crudos en caché para no ir a SQL cada vez que cambias de Trimestre a Semestre
-        private List<VentaReporteModel> _datosCache;
+        private List<ClienteRankingModel> _datosCache;
 
-        // Contador de Clientes (La enumeración que pediste)
         private int _totalClientesActivos;
         public int TotalClientesActivos
         {
             get => _totalClientesActivos;
             set { _totalClientesActivos = value; OnPropertyChanged(); }
         }
-
-        // Totales Monetarios
         private decimal _granTotalVenta;
         public decimal GranTotalVenta { get => _granTotalVenta; set { _granTotalVenta = value; OnPropertyChanged(); } }
-
-        // Filtros
-        public FilterService Filters { get; } // Tu servicio de filtros global (Sucursal, Fechas)
+        public FilterService Filters { get; }
 
         private string _textoBusqueda;
         public string TextoBusqueda
@@ -55,111 +38,144 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 _textoBusqueda = value;
                 OnPropertyChanged();
-                AplicarFiltrosLocales(); // Buscador en tiempo real
+                _ = AplicarFiltrosLocalesAsync();
             }
         }
 
         private bool _isLoading;
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
 
-        // Periodo actual (para los botones)
         private string _periodoActual = "ANUAL";
-
-        // ---------------------------------------------------------
-        // COMANDOS
-        // ---------------------------------------------------------
         public RelayCommand ActualizarCommand { get; set; }
         public RelayCommand CambiarPeriodoCommand { get; set; }
-
-        // ---------------------------------------------------------
-        // CONSTRUCTOR
-        // ---------------------------------------------------------
         public ClientesViewModel(
-            ReportesService reportesService,
+            ClientesService clientesService,
             ClientesLogicService logicService,
             FilterService filterService,
             IDialogService dialogService)
         {
-            _reportesService = reportesService;
+            _clientesService = clientesService;
             _logicService = logicService;
             Filters = filterService;
             _dialogService = dialogService;
 
             ListaClientes = new ObservableCollection<SubLineaPerformanceModel>();
-            _datosCache = new List<VentaReporteModel>();
+            _datosCache = new List<ClienteRankingModel>();
 
             ActualizarCommand = new RelayCommand(o => CargarDatos());
             CambiarPeriodoCommand = new RelayCommand(p =>
             {
                 if ( p is string periodo ) GenerateTarjetas(periodo);
             });
-
-            // Carga inicial
             CargarDatos();
         }
 
         private async void CargarDatos()
         {
+            if ( IsLoading ) return;
             IsLoading = true;
             try
             {
-                // 1. Obtenemos ventas de TODO el año actual para poder hacer comparativas (Ene-Dic)
-                // Usamos el año de la fecha seleccionada en el filtro, o el actual.
-                string anio = Filters.FechaInicio.Year.ToString();
+                int anio = Filters.FechaInicio.Year;
 
-                // Reutilizamos el método que trae datos por artículo, o creamos uno optimizado solo por cliente
-                // Para este ejemplo, asumimos que obtienes el listado de ventas detallado
-                var rawData = await _reportesService.ObtenerHistoricoAnualPorArticulo(anio, Filters.SucursalId.ToString());
+                var rawData = await _clientesService.ObtenerReporteAnualClientes(Filters.SucursalId, anio);
 
                 _datosCache = rawData;
 
-                // 2. Calcular KPIs Generales
-                GranTotalVenta = _datosCache.Sum(x => x.TotalVenta); // O la propiedad que uses para sumar
-                TotalClientesActivos = _datosCache.Select(x => x.Cliente).Distinct().Count();
+                GranTotalVenta = _datosCache.Sum(x => x.TotalAnual);
+                TotalClientesActivos = _datosCache.Count;
 
-                // 3. Generar Tarjetas con el periodo default
-                GenerateTarjetas("ANUAL"); // Por defecto muestra Trimestres (Q1-Q4)
+                await GenerateTarjetasAsync("ANUAL");
             }
             catch ( Exception ex )
             {
-                _dialogService.ShowMessage("Error", "No se pudieron cargar los clientes: " + ex.Message);
+                _dialogService.ShowError("Error al cargar clientes", ex.Message);
             }
             finally
             {
                 IsLoading = false;
             }
         }
-
-        private void GenerateTarjetas(string periodo)
+        private async void GenerateTarjetas(string periodo)
         {
-            _periodoActual = periodo;
-            AplicarFiltrosLocales();
+            await GenerateTarjetasAsync(periodo);
         }
 
-        private void AplicarFiltrosLocales()
+        private async Task GenerateTarjetasAsync(string periodo)
         {
-            if ( _datosCache == null ) return;
+            _periodoActual = periodo;
+            await AplicarFiltrosLocalesAsync();
+        }
+        private async Task AplicarFiltrosLocalesAsync()
+        {
+            if ( _datosCache == null || !_datosCache.Any() ) return;
 
-            // 1. Filtramos los datos base por el Buscador (Texto)
-            var datosFiltrados = _datosCache.AsEnumerable();
+            IsLoading = true;
+            string query = TextoBusqueda?.ToUpper();
+            string periodo = _periodoActual;
+            var datosBase = _datosCache; 
 
-            if ( !string.IsNullOrWhiteSpace(TextoBusqueda) )
+            var resultadoTarjetas = await Task.Run(() =>
             {
-                string q = TextoBusqueda.ToUpper();
-                datosFiltrados = datosFiltrados.Where(x => x.Cliente != null && x.Cliente.ToUpper().Contains(q));
+                IEnumerable<ClienteRankingModel> filtrados = datosBase;
+                if ( !string.IsNullOrWhiteSpace(query) )
+                {
+                    filtrados = datosBase.Where(x =>
+                        ( x.Nombre != null && x.Nombre.ToUpper().Contains(query) ) ||
+                        ( x.ClaveCliente != null && x.ClaveCliente.Contains(query) )
+                    );
+                }
+
+                var listaFiltrada = filtrados.ToList();
+                string modoCalculo = periodo == "ANUAL" ? "TRIMESTRAL" : periodo;
+                var tarjetasGeneradas = CalcularDesgloseLocal(listaFiltrada, modoCalculo);
+
+                return new { Tarjetas = tarjetasGeneradas, Total = listaFiltrada.Count };
+            });
+
+            // VOLVER A UI
+            ListaClientes = new ObservableCollection<SubLineaPerformanceModel>(resultadoTarjetas.Tarjetas);
+            TotalClientesActivos = resultadoTarjetas.Total;
+
+            IsLoading = false;
+        }
+        private List<SubLineaPerformanceModel> CalcularDesgloseLocal(List<ClienteRankingModel> datos, string modo)
+        {
+            var resultado = new List<SubLineaPerformanceModel>();
+
+            if ( modo == "TRIMESTRAL" )
+            {
+                resultado.Add(CrearTarjeta("Q1 (Ene-Mar)", datos, d => d.Enero + d.Febrero + d.Marzo));
+                resultado.Add(CrearTarjeta("Q2 (Abr-Jun)", datos, d => d.Abril + d.Mayo + d.Junio));
+                resultado.Add(CrearTarjeta("Q3 (Jul-Sep)", datos, d => d.Julio + d.Agosto + d.Septiembre));
+                resultado.Add(CrearTarjeta("Q4 (Oct-Dic)", datos, d => d.Octubre + d.Noviembre + d.Diciembre));
+            }
+            else if ( modo == "SEMESTRAL" )
+            {
+                resultado.Add(CrearTarjeta("Semestre 1", datos, d => d.Enero + d.Febrero + d.Marzo + d.Abril + d.Mayo + d.Junio));
+                resultado.Add(CrearTarjeta("Semestre 2", datos, d => d.Julio + d.Agosto + d.Septiembre + d.Octubre + d.Noviembre + d.Diciembre));
             }
 
-            // 2. Usamos el LogicService para crear las tarjetas (Q1, Q2, etc)
-            // Nota: Si periodo es "ANUAL", mandamos "TRIMESTRAL" para ver el desglose Q1-Q4
-            string modoCalculo = _periodoActual == "ANUAL" ? "TRIMESTRAL" : _periodoActual;
+            return resultado;
+        }
+        private SubLineaPerformanceModel CrearTarjeta(string titulo, List<ClienteRankingModel> datos, Func<ClienteRankingModel, decimal> selectorVenta)
+        {
+            decimal totalPeriodo = datos.Sum(selectorVenta);
+            var topCliente = datos.OrderByDescending(selectorVenta).FirstOrDefault();
 
-            var listaTarjetas = _logicService.CalcularDesgloseClientes(datosFiltrados.ToList(), modoCalculo);
+            return new SubLineaPerformanceModel
+            {
+                Nombre = titulo,
+                VentaTotal = totalPeriodo, 
+                LitrosTotales = 0,
 
-            ListaClientes = new ObservableCollection<SubLineaPerformanceModel>(listaTarjetas);
+                Crecimiento = 0,
+                EsPositivo = true,
+                TopProductoNombre = topCliente != null ? topCliente.Nombre : "N/A",
+                TopProductoVenta = topCliente != null ? selectorVenta(topCliente) : 0,
 
-            // Actualizamos el contador visual según la búsqueda actual
-            // (Opcional: si quieres que el contador baje cuando buscas "JUAN")
-             TotalClientesActivos = ListaClientes.Count; 
+                Bloques = new List<PeriodoBloque>()
+            };
         }
     }
 }
