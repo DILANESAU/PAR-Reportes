@@ -11,9 +11,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Data;
-using System.Windows.Media;
 
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
@@ -24,17 +22,14 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class FamiliaViewModel : ObservableObject
     {
-        // Servicios inyectados
         private readonly ReportesService _reportesService;
         private readonly CatalogoService _catalogoService;
-        private readonly ChartService _chartService;
-        private readonly FamiliaLogicService _familiaLogic;
+        private readonly ChartService _chartService; 
+        private readonly FamiliaLogicService _familiaLogic; 
         private readonly IDialogService _dialogService;
         private readonly ISnackbarService _snackbarService;
-
         public FilterService Filters { get; }
 
-        // Propiedades Visuales
         public ObservableCollection<FamiliaResumenModel> TarjetasFamilias { get; set; }
         public ObservableCollection<FamiliaResumenModel> TarjetasArquitectonica { get; set; }
         public ObservableCollection<FamiliaResumenModel> TarjetasEspecializada { get; set; }
@@ -46,17 +41,11 @@ namespace WPF_PAR.MVVM.ViewModels
             set { _detalleVentas = value; OnPropertyChanged(); }
         }
 
-        private string _tituloGraficoPastel = "Distribución por Sub-Línea";
-        public string TituloGraficoPastel { get => _tituloGraficoPastel; set { _tituloGraficoPastel = value; OnPropertyChanged(); } }
-
-        private string _tituloGraficoBarras = "Top 5 Productos";
-        public string TituloGraficoBarras { get => _tituloGraficoBarras; set { _tituloGraficoBarras = value; OnPropertyChanged(); } }
-
-        private ObservableCollection<SubLineaPerformanceModel> _listaDesglose;
-        public ObservableCollection<SubLineaPerformanceModel> ListaDesglose
+        private ObservableCollection<LineaResumenModel> _resumenLineas;
+        public ObservableCollection<LineaResumenModel> ResumenLineas
         {
-            get => _listaDesglose;
-            set { _listaDesglose = value; OnPropertyChanged(); }
+            get => _resumenLineas;
+            set { _resumenLineas = value; OnPropertyChanged(); }
         }
 
         private ISeries[] _seriesDetalle;
@@ -64,17 +53,19 @@ namespace WPF_PAR.MVVM.ViewModels
 
         private ISeries[] _seriesTendencia;
         public ISeries[] SeriesTendencia { get => _seriesTendencia; set { _seriesTendencia = value; OnPropertyChanged(); } }
-        public Axis[] EjeXTendencia { get; set; }
-        public Axis[] EjeYTendencia { get; set; }
+        private Axis[] _ejeXTendencia;
+        public Axis[] EjeXTendencia { get => _ejeXTendencia; set { _ejeXTendencia = value; OnPropertyChanged(); } }
+        private Axis[] _ejeYTendencia;
+        public Axis[] EjeYTendencia { get => _ejeYTendencia; set { _ejeYTendencia = value; OnPropertyChanged(); } }
 
-        public ISeries[] SeriesComportamientoLineas { get; set; }
-        public Axis[] EjeXMensual { get; set; }
+        private ISeries[] _seriesComportamientoLineas;
+        public ISeries[] SeriesComportamientoLineas { get => _seriesComportamientoLineas; set { _seriesComportamientoLineas = value; OnPropertyChanged(); } }
+        private Axis[] _ejeXMensual;
+        public Axis[] EjeXMensual { get => _ejeXMensual; set { _ejeXMensual = value; OnPropertyChanged(); } }
 
         private List<VentaReporteModel> _ventasProcesadas;
         private List<VentaReporteModel> _datosAnualesCache;
         private List<VentaReporteModel> _datosFamiliaActual;
-
-        private string _lineaActual = "Todas";
 
         private decimal _granTotalVenta;
         public decimal GranTotalVenta { get => _granTotalVenta; set { _granTotalVenta = value; OnPropertyChanged(); } }
@@ -128,21 +119,22 @@ namespace WPF_PAR.MVVM.ViewModels
                 if ( !string.IsNullOrEmpty(value) ) ActualizarGraficosPorSubLinea();
             }
         }
+        private string _lineaActual = "Todas";
 
         public RelayCommand ActualizarCommand { get; set; }
         public RelayCommand VerDetalleCommand { get; set; }
         public RelayCommand RegresarCommand { get; set; }
         public RelayCommand ExportarExcelCommand { get; set; }
+        public RelayCommand OrdenarVentaCommand { get; set; }
+        public RelayCommand OrdenarNombreCommand { get; set; }
         public RelayCommand CambiarPeriodoGraficoCommand { get; set; }
 
         public FamiliaViewModel(
             IDialogService dialogService,
             ISnackbarService snackbarService,
             FilterService filterService,
-            ChartService chartService,
-            FamiliaLogicService familiaLogic,
-            ReportesService reportesService,
-            CatalogoService catalogoService)
+            ChartService chartService,           
+            FamiliaLogicService familiaLogic)   
         {
             _dialogService = dialogService;
             _snackbarService = snackbarService;
@@ -152,12 +144,11 @@ namespace WPF_PAR.MVVM.ViewModels
             _reportesService = reportesService;
             _catalogoService = catalogoService;
 
-            // Inicializar Colecciones
             TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>();
             TarjetasArquitectonica = new ObservableCollection<FamiliaResumenModel>();
             TarjetasEspecializada = new ObservableCollection<FamiliaResumenModel>();
             DetalleVentas = new ObservableCollection<VentaReporteModel>();
-            ListaDesglose = new ObservableCollection<SubLineaPerformanceModel>();
+            ResumenLineas = new ObservableCollection<LineaResumenModel>();
 
             _ventasProcesadas = new List<VentaReporteModel>();
             _datosAnualesCache = new List<VentaReporteModel>();
@@ -171,6 +162,8 @@ namespace WPF_PAR.MVVM.ViewModels
             EjeXMensual = new Axis[] { new Axis { LabelsPaint = new SolidColorPaint(SKColors.Gray) } };
 
             ActualizarCommand = new RelayCommand(o => EjecutarReporte());
+            OrdenarVentaCommand = new RelayCommand(o => AplicarOrden("VENTA"));
+            OrdenarNombreCommand = new RelayCommand(o => AplicarOrden("NOMBRE"));
             RegresarCommand = new RelayCommand(o => VerResumen = true);
             ExportarExcelCommand = new RelayCommand(o => GenerarReporteExcel());
 
@@ -181,36 +174,40 @@ namespace WPF_PAR.MVVM.ViewModels
 
             CambiarPeriodoGraficoCommand = new RelayCommand(param =>
             {
-                if ( param is string periodo ) GenerarDesglosePorPeriodo(periodo);
+                if ( param is string periodo ) GenerarGraficoPorPeriodo(periodo);
             });
 
-            CargarPorLinea("Todas");
+            var tarjetasVacias = _familiaLogic.ObtenerTarjetasVacias("Todas");
+            TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(tarjetasVacias);
+
             EjecutarReporte();
         }
         public void CargarPorLinea(string linea)
         {
             _lineaActual = linea;
+
+            // Si ya tenemos datos cargados, solo refrescamos la visualización
             if ( _ventasProcesadas != null && _ventasProcesadas.Any() )
             {
-                GenerarResumenVisual(); 
+                GenerarResumenVisual();
             }
             else
             {
                 var vacias = _familiaLogic.ObtenerTarjetasVacias(_lineaActual);
                 TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(vacias);
+
             }
+
             VerResumen = true;
         }
-
         private async void EjecutarReporte()
         {
             IsLoading = true;
             try
             {
-
                 var ventasRaw = await _reportesService.ObtenerVentasBrutasRango(Filters.SucursalId, Filters.FechaInicio, Filters.FechaFin);
 
-                var resultadoProcesado = await Task.Run(() =>
+                foreach ( var venta in _ventasProcesadas )
                 {
                     foreach ( var venta in ventasRaw )
                     {
@@ -260,7 +257,6 @@ namespace WPF_PAR.MVVM.ViewModels
 
                 IsLoading = false;
 
-                // PASO 4: Carga de fondo (Histórico) - Esto ya es async, no bloquea
                 _datosAnualesCache = await _reportesService.ObtenerHistoricoAnualPorArticulo(
                     DateTime.Now.Year.ToString(),
                     Filters.SucursalId.ToString()
@@ -269,15 +265,13 @@ namespace WPF_PAR.MVVM.ViewModels
                 // Enriquecimiento del histórico en Task.Run para no bloquear si son muchos datos
                 await Task.Run(() =>
                 {
-                    foreach ( var item in _datosAnualesCache )
-                    {
-                        var info = _catalogoService.ObtenerInfo(item.Articulo);
-                        item.Linea = info.Linea;
-                        item.Familia = info.FamiliaSimple;
-                    }
-                });
+                    var info = _catalogoService.ObtenerInfo(item.Articulo);
+                    item.Linea = info.Linea;
+                    item.Familia = info.FamiliaSimple;
+                }
 
-                if ( VerDetalle ) GenerarDesglosePorPeriodo("ANUAL");
+                if ( VerDetalle ) GenerarGraficoPorPeriodo("ANUAL");
+
             }
             catch ( Exception ex )
             {
@@ -289,15 +283,33 @@ namespace WPF_PAR.MVVM.ViewModels
         // Este método ya se integró en EjecutarReporte, pero lo mantenemos para refrescos manuales si existen
         private void GenerarResumenVisual()
         {
-            // Ya está manejado en EjecutarReporte, pero si cambias de "Arquitectónica" a "Especializada"
-            // usando botones, usarás CargarPorLinea que llama a esto.
-            // Simplemente reutilizamos las listas ya calculadas en memoria.
-            if ( _lineaActual == "Arquitectonica" ) TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(TarjetasArquitectonica);
-            else if ( _lineaActual == "Especializada" ) TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(TarjetasEspecializada);
-            else TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(TarjetasArquitectonica.Concat(TarjetasEspecializada));
+            var (arqui, espe) = _familiaLogic.CalcularResumenGlobal(_ventasProcesadas);
+
+            TarjetasArquitectonica = new ObservableCollection<FamiliaResumenModel>(arqui);
+            TarjetasEspecializada = new ObservableCollection<FamiliaResumenModel>(espe);
+
+            GranTotalVenta = _ventasProcesadas.Sum(x => x.TotalVenta);
+            GranTotalLitros = _ventasProcesadas.Sum(x => x.LitrosTotales);
+
+            var listaParaMostrar = new List<FamiliaResumenModel>();
+
+            if ( _lineaActual == "Arquitectonica" )
+            {
+                listaParaMostrar.AddRange(arqui);
+            }
+            else if ( _lineaActual == "Especializada" )
+            {
+                listaParaMostrar.AddRange(espe);
+            }
+            else 
+            {
+                listaParaMostrar.AddRange(arqui);
+                listaParaMostrar.AddRange(espe);
+            }
+
+            TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(listaParaMostrar);
         }
 
-        // ... (CargarDetalle queda igual) ...
         private void CargarDetalle(string familia)
         {
             TituloDetalle = familia;
@@ -305,11 +317,19 @@ namespace WPF_PAR.MVVM.ViewModels
 
             SubLineasDisponibles.Clear();
             SubLineasDisponibles.Add("TODAS");
-            var lineas = _datosFamiliaActual.Select(x => x.Linea).Distinct().OrderBy(x => x);
+
+            var lineas = _datosFamiliaActual
+                            .Select(x => x.Linea)
+                            .Distinct()
+                            .OrderBy(x => x)
+                            .ToList();
+
             foreach ( var l in lineas ) SubLineasDisponibles.Add(l);
 
             SubLineaSeleccionada = "TODAS";
-            GenerarDesglosePorPeriodo("ANUAL");
+
+            GenerarGraficoPorPeriodo("ANUAL");
+
             VerResumen = false;
         }
 
@@ -318,108 +338,58 @@ namespace WPF_PAR.MVVM.ViewModels
         {
             if ( _datosFamiliaActual == null ) return;
 
-            // Guardamos estado UI antes de ir al hilo secundario
             string filtro = SubLineaSeleccionada;
-            bool porLitros = VerPorLitros;
-            var datosOrigen = _datosFamiliaActual; // Referencia segura a la lista
+            var datosFiltrados = ( filtro == "TODAS" || string.IsNullOrEmpty(filtro) )
+                ? _datosFamiliaActual.ToList()
+                : _datosFamiliaActual.Where(x => ( x.Linea ?? "" ).Equals(filtro, StringComparison.OrdinalIgnoreCase)).ToList();
 
-            var resultadoGraficos = await Task.Run(() =>
-            {
-                // Lógica de filtrado
-                var datosBase = datosOrigen
-                   .Where(x => !x.Linea.Contains("FERRETERIA", StringComparison.OrdinalIgnoreCase))
-                   .ToList();
+            DetalleVentas = new ObservableCollection<VentaReporteModel>(
+                datosFiltrados.OrderByDescending(x => x.TotalVenta)
+            );
 
-                bool esVistaGlobal = ( filtro == "TODAS" || string.IsNullOrEmpty(filtro) );
-
-                var datosFiltrados = esVistaGlobal
-                    ? datosBase.ToList()
-                    : datosBase.Where(x => ( x.Linea ?? "" ).Equals(filtro, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                // Preparar datos para gráficos (ChartService devuelve objetos ligeros o configs)
-                // OJO: LiveCharts crea objetos UI, pero suelen ser seguros de crear en background si no se adjuntan todavía
-                // Si LiveCharts da error de threading, mueve solo la generación de Series fuera del Task.Run.
-                // Generalmente LiveCharts v2 es amigable con esto.
-
-                // Calculamos datos puros
-                var gruposPie = datosFiltrados
-                    .GroupBy(x => esVistaGlobal ? x.Linea : x.Descripcion)
-                    .Select(g => new LineaResumenModel
-                    {
-                        NombreLinea = g.Key,
-                        VentaTotal = g.Sum(x => x.TotalVenta)
-                    })
-                    .OrderByDescending(x => x.VentaTotal)
-                    .Take(5)
-                    .ToList();
-
-                // Para las barras
-                List<VentaReporteModel> datosBarras;
-                if ( esVistaGlobal )
+            var gruposLinea = datosFiltrados
+                .GroupBy(x => x.Linea)
+                .Select(g => new LineaResumenModel
                 {
-                    datosBarras = datosFiltrados; // Se procesan dentro de GenerarTopProductos
-                }
-                else
-                {
-                    // Lógica especial de clientes
-                    datosBarras = datosFiltrados.Select(x => new VentaReporteModel
-                    {
-                        Descripcion = x.Cliente,
-                        Cantidad = x.Cantidad,
-                        LitrosUnitarios = x.LitrosUnitarios,
-                        PrecioUnitario = x.PrecioUnitario,
-                        Descuento = x.Descuento,
-                        TotalVenta = x.TotalVenta // Importante copiar esto
-                    }).ToList();
-                }
+                    NombreLinea = g.Key,
+                    VentaTotal = g.Sum(x => x.TotalVenta),
+                    LitrosTotales = g.Sum(x => x.LitrosTotales),
+                    ProductoTop = g.GroupBy(p => p.Descripcion)
+                                   .OrderByDescending(gp => gp.Sum(v => v.LitrosTotales))
+                                   .FirstOrDefault()?.Key ?? "Sin datos"
+                })
+                .OrderByDescending(x => x.VentaTotal)
+                .ToList();
 
-                return new
-                {
-                    EsGlobal = esVistaGlobal,
-                    DatosTabla = datosFiltrados.OrderByDescending(x => x.TotalVenta).ToList(),
-                    GruposPie = gruposPie,
-                    DatosBarras = datosBarras
-                };
-            });
+            ResumenLineas = new ObservableCollection<LineaResumenModel>(gruposLinea);
 
-            // Volvemos al UI Thread para crear los Visuales
-            // Esto es muy rápido, lo lento era filtrar y agrupar las listas
-            TituloGraficoPastel = resultadoGraficos.EsGlobal ? "Distribución por Sub-Línea" : "Top Productos de esta Línea";
-            TituloGraficoBarras = resultadoGraficos.EsGlobal ? "Top 5 Productos Globales" : "Top Clientes de esta Línea";
+            SeriesDetalle = _chartService.GenerarPieChart(gruposLinea.Take(5).ToList());
 
-            DetalleVentas = new ObservableCollection<VentaReporteModel>(resultadoGraficos.DatosTabla);
-
-            SeriesDetalle = _chartService.GenerarPieChart(resultadoGraficos.GruposPie);
-
-            var resTop = _chartService.GenerarTopProductos(resultadoGraficos.DatosBarras, porLitros);
-            SeriesTendencia = resTop.Series;
-            EjeXTendencia = resTop.EjesX;
-            EjeYTendencia = resTop.EjesY;
+            var resultadoTop = _chartService.GenerarTopProductos(datosFiltrados, VerPorLitros);
+            SeriesTendencia = resultadoTop.Series;
+            EjeXTendencia = resultadoTop.EjesX;
+            EjeYTendencia = resultadoTop.EjesY;
         }
 
-        // ... (GenerarDesglosePorPeriodo y otros métodos auxiliares se quedan igual o se pueden optimizar similarmente) ...
-
-        private void GenerarDesglosePorPeriodo(string periodo)
+        private void GenerarGraficoPorPeriodo(string periodo)
         {
             if ( _datosAnualesCache == null ) return;
 
-            // Esto es rápido, pero si notaras lentitud, podrías envolverlo en Task.Run también
             var datosFamiliaAnuales = _datosAnualesCache
                 .Where(x => x.Familia == TituloDetalle)
                 .ToList();
 
-            var resultadoGrafico = _chartService.GenerarTendenciaLineas(datosFamiliaAnuales, periodo);
-            SeriesComportamientoLineas = resultadoGrafico.Series;
-            EjeXMensual = resultadoGrafico.EjesX;
-            OnPropertyChanged(nameof(SeriesComportamientoLineas));
-            OnPropertyChanged(nameof(EjeXMensual));
+            var resultado = _chartService.GenerarTendenciaLineas(datosFamiliaAnuales, periodo);
 
-            string modoCalculo = periodo == "ANUAL" ? "TRIMESTRAL" : periodo;
-            var listaNueva = _familiaLogic.CalcularDesgloseClientes(datosFamiliaAnuales, modoCalculo);
-            ListaDesglose = new ObservableCollection<SubLineaPerformanceModel>(listaNueva);
+            SeriesComportamientoLineas = resultado.Series;
+            EjeXMensual = resultado.EjesX;
+        }
+        private void AplicarOrden(string criterio)
+        {
+            var listaOrdenada = _familiaLogic.OrdenarTarjetas(TarjetasFamilias, criterio);
+            TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(listaOrdenada);
         }
 
-        // ... (GenerarReporteExcel y FiltrarTabla sin cambios) ...
         private void GenerarReporteExcel()
         {
             if ( DetalleVentas == null || DetalleVentas.Count == 0 )

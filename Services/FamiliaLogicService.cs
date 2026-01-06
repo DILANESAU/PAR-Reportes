@@ -41,6 +41,7 @@ namespace WPF_PAR.Services
 
             return (arq, esp);
         }
+
         private FamiliaResumenModel CrearTarjeta(string nombre, List<IGrouping<string, VentaReporteModel>> grupos)
         {
             var grupo = grupos.FirstOrDefault(g => g.Key == nombre);
@@ -114,82 +115,6 @@ namespace WPF_PAR.Services
                     VentaTotal = 0
                 };
             }).ToList();
-        }
-        // En Services/FamiliaLogicService.cs
-
-        public List<SubLineaPerformanceModel> CalcularDesgloseClientes(List<VentaReporteModel> datos, string modo)
-        {
-            if ( datos == null || !datos.Any() ) return new List<SubLineaPerformanceModel>();
-
-            var resultado = new List<SubLineaPerformanceModel>();
-            int mesActual = DateTime.Now.Month;
-
-            // 1. Agrupar (Aquí tomamos TODOS los clientes del año)
-            var grupos = datos
-                .GroupBy(x => string.IsNullOrWhiteSpace(x.Cliente) ? "CLIENTE SIN NOMBRE" : x.Cliente)
-                .Select(g => new {
-                    Nombre = g.Key,
-                    TotalDinero = g.Sum(v => v.TotalVenta),
-                    TotalLitros = g.Sum(v => v.LitrosTotales), // Suma anual litros
-                    Ventas = g.ToList()
-                })
-                .OrderByDescending(x => x.TotalDinero)
-                .ToList();
-
-            foreach ( var grupo in grupos )
-            {
-                var modelo = new SubLineaPerformanceModel
-                {
-                    Nombre = grupo.Nombre,
-                    VentaTotal = grupo.TotalDinero,
-                    LitrosTotales = grupo.TotalLitros, // Guardamos el total anual
-                    Bloques = new List<PeriodoBloque>()
-                };
-
-                // Lógica de Bloques (Ahora sumamos Litros también)
-                if ( modo == "TRIMESTRAL" )
-                {
-                    for ( int i = 1; i <= 4; i++ )
-                    {
-                        int mesFin = i * 3;
-                        int mesIni = mesFin - 2;
-                        bool esFuturo = mesIni > mesActual;
-
-                        // Filtramos las ventas de este periodo
-                        var ventasPeriodo = grupo.Ventas
-                            .Where(v => v.FechaEmision.Month >= mesIni && v.FechaEmision.Month <= mesFin)
-                            .ToList();
-
-                        modelo.Bloques.Add(new PeriodoBloque
-                        {
-                            Etiqueta = $"Q{i}",
-                            Valor = ventasPeriodo.Sum(v => v.TotalVenta), // Si no hay ventas, Sum da 0 (Correcto)
-                            Litros = ventasPeriodo.Sum(v => v.LitrosTotales), // <--- Suma de Litros
-                            EsFuturo = esFuturo
-                        });
-                    }
-                }
-                else if ( modo == "MENSUAL" )
-                {
-                    string[] meses = { "", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
-                    for ( int m = 1; m <= 12; m++ )
-                    {
-                        var ventasMes = grupo.Ventas.Where(v => v.FechaEmision.Month == m).ToList();
-                        modelo.Bloques.Add(new PeriodoBloque
-                        {
-                            Etiqueta = meses[m],
-                            Valor = ventasMes.Sum(v => v.TotalVenta),
-                            Litros = ventasMes.Sum(v => v.LitrosTotales), // <--- Suma Litros
-                            EsFuturo = m > mesActual
-                        });
-                    }
-                }
-                // ... (Igual para Semestral/Anual) ...
-
-                resultado.Add(modelo);
-            }
-
-            return resultado;
         }
     }
 }

@@ -1,4 +1,8 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
@@ -9,173 +13,111 @@ namespace WPF_PAR.MVVM.ViewModels
     public class ClientesViewModel : ObservableObject
     {
         private readonly ClientesService _clientesService;
-        private readonly ClientesLogicService _logicService;
         private readonly IDialogService _dialogService;
-        private ObservableCollection<SubLineaPerformanceModel> _listaClientes;
-        public ObservableCollection<SubLineaPerformanceModel> ListaClientes
-        {
-            get => _listaClientes;
-            set { _listaClientes = value; OnPropertyChanged(); }
-        }
 
-        private List<ClienteRankingModel> _datosCache;
+        // Propiedad Filters Pública para el XAML
+        public FilterService Filters { get; private set; }
 
-        private int _totalClientesActivos;
-        public int TotalClientesActivos
-        {
-            get => _totalClientesActivos;
-            set { _totalClientesActivos = value; OnPropertyChanged(); }
-        }
-        private decimal _granTotalVenta;
-        public decimal GranTotalVenta { get => _granTotalVenta; set { _granTotalVenta = value; OnPropertyChanged(); } }
-        public FilterService Filters { get; }
+        public List<int> AñosDisponibles { get; set; }
 
-        private string _textoBusqueda;
-        public string TextoBusqueda
+        private int _anioSeleccionado;
+        public int AnioSeleccionado
         {
-            get => _textoBusqueda;
+            get => _anioSeleccionado;
             set
             {
-                _textoBusqueda = value;
-                OnPropertyChanged();
-                _ = AplicarFiltrosLocalesAsync();
+                if ( _anioSeleccionado != value )
+                {
+                    _anioSeleccionado = value;
+                    OnPropertyChanged();
+                    // Recargar automáticamente al cambiar el año
+                    CargarDatos();
+                }
             }
+        }
+
+        public ObservableCollection<ClienteRankingModel> ListaClientes { get; set; }
+
+        // --- KPIs ---
+        private int _clientesEnRiesgo;
+        public int ClientesEnRiesgo
+        {
+            get => _clientesEnRiesgo;
+            set { _clientesEnRiesgo = value; OnPropertyChanged(); }
         }
 
         private bool _isLoading;
-        public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
-
-        private string _periodoActual = "ANUAL";
-        public RelayCommand ActualizarCommand { get; set; }
-        public RelayCommand CambiarPeriodoCommand { get; set; }
-        public ClientesViewModel(
-            ClientesService clientesService,
-            ClientesLogicService logicService,
-            FilterService filterService,
-            IDialogService dialogService)
+        public bool IsLoading
         {
-            _clientesService = clientesService;
-            _logicService = logicService;
-            Filters = filterService;
+            get => _isLoading;
+            set { _isLoading = value; OnPropertyChanged(); }
+        }
+
+        public RelayCommand ActualizarCommand { get; set; }
+
+        public ClientesViewModel(IDialogService dialogService, FilterService filterService)
+        {
+            _clientesService = new ClientesService();
             _dialogService = dialogService;
 
-            ListaClientes = new ObservableCollection<SubLineaPerformanceModel>();
-            _datosCache = new List<ClienteRankingModel>();
+            // 1. VALIDACIÓN EN CONSTRUCTOR
+            Filters = filterService ?? throw new ArgumentNullException(nameof(filterService));
 
+            int actual = DateTime.Now.Year;
+            AñosDisponibles = new List<int> { actual, actual - 1, actual - 2, actual - 3, actual - 4 };
+            AnioSeleccionado = actual;
+
+            ListaClientes = new ObservableCollection<ClienteRankingModel>();
             ActualizarCommand = new RelayCommand(o => CargarDatos());
-            CambiarPeriodoCommand = new RelayCommand(p =>
-            {
-                if ( p is string periodo ) GenerateTarjetas(periodo);
-            });
+
+            // Suscripción segura al evento del filtro (si existe)
+            Filters.OnFiltrosCambiados += CargarDatos;
+
             CargarDatos();
         }
 
-        private async void CargarDatos()
+        public async void CargarDatos()
         {
             if ( IsLoading ) return;
+
             IsLoading = true;
             try
             {
-                int anio = Filters.FechaInicio.Year;
+                // 2. VALIDACIÓN DE DEPENDENCIA
+                if ( Filters == null ) return;
 
-                var rawData = await _clientesService.ObtenerReporteAnualClientes(Filters.SucursalId, anio);
+                var datos = await _clientesService.ObtenerReporteAnualClientes(
+                    Filters.SucursalId,
+                    AnioSeleccionado
+                );
 
-                _datosCache = rawData;
+                ListaClientes.Clear();
 
-                GranTotalVenta = _datosCache.Sum(x => x.TotalAnual);
-                TotalClientesActivos = _datosCache.Count;
+                // 3. LA SOLUCIÓN AL ERROR DE 2DA VUELTA
+                // Si el servicio devuelve null (por error de conexión o lo que sea),
+                // esto evita que la App se cierre.
+                if ( datos != null )
+                {
+                    foreach ( var c in datos ) ListaClientes.Add(c);
 
-                await GenerateTarjetasAsync("ANUAL");
+                    // Solo calculamos si hay datos y si la propiedad existe
+                    // (Asumiendo que quieres contar los que bajaron ventas)
+                    if ( datos.Any() )
+                    {
+                        // Ejemplo: Clientes que compraron menos que el promedio o 0 este mes
+                        // Ajusta esta lógica según tu modelo real
+                        ClientesEnRiesgo = datos.Count(c => c.Diciembre == 0);
+                    }
+                }
             }
             catch ( Exception ex )
             {
-                _dialogService.ShowError("Error al cargar clientes", ex.Message);
+                _dialogService.ShowError("Error al cargar datos: " + ex.Message, "Error");
             }
             finally
             {
                 IsLoading = false;
             }
-        }
-        private async void GenerateTarjetas(string periodo)
-        {
-            await GenerateTarjetasAsync(periodo);
-        }
-
-        private async Task GenerateTarjetasAsync(string periodo)
-        {
-            _periodoActual = periodo;
-            await AplicarFiltrosLocalesAsync();
-        }
-        private async Task AplicarFiltrosLocalesAsync()
-        {
-            if ( _datosCache == null || !_datosCache.Any() ) return;
-
-            IsLoading = true;
-            string query = TextoBusqueda?.ToUpper();
-            string periodo = _periodoActual;
-            var datosBase = _datosCache; 
-
-            var resultadoTarjetas = await Task.Run(() =>
-            {
-                IEnumerable<ClienteRankingModel> filtrados = datosBase;
-                if ( !string.IsNullOrWhiteSpace(query) )
-                {
-                    filtrados = datosBase.Where(x =>
-                        ( x.Nombre != null && x.Nombre.ToUpper().Contains(query) ) ||
-                        ( x.ClaveCliente != null && x.ClaveCliente.Contains(query) )
-                    );
-                }
-
-                var listaFiltrada = filtrados.ToList();
-                string modoCalculo = periodo == "ANUAL" ? "TRIMESTRAL" : periodo;
-                var tarjetasGeneradas = CalcularDesgloseLocal(listaFiltrada, modoCalculo);
-
-                return new { Tarjetas = tarjetasGeneradas, Total = listaFiltrada.Count };
-            });
-
-            // VOLVER A UI
-            ListaClientes = new ObservableCollection<SubLineaPerformanceModel>(resultadoTarjetas.Tarjetas);
-            TotalClientesActivos = resultadoTarjetas.Total;
-
-            IsLoading = false;
-        }
-        private List<SubLineaPerformanceModel> CalcularDesgloseLocal(List<ClienteRankingModel> datos, string modo)
-        {
-            var resultado = new List<SubLineaPerformanceModel>();
-
-            if ( modo == "TRIMESTRAL" )
-            {
-                resultado.Add(CrearTarjeta("Q1 (Ene-Mar)", datos, d => d.Enero + d.Febrero + d.Marzo));
-                resultado.Add(CrearTarjeta("Q2 (Abr-Jun)", datos, d => d.Abril + d.Mayo + d.Junio));
-                resultado.Add(CrearTarjeta("Q3 (Jul-Sep)", datos, d => d.Julio + d.Agosto + d.Septiembre));
-                resultado.Add(CrearTarjeta("Q4 (Oct-Dic)", datos, d => d.Octubre + d.Noviembre + d.Diciembre));
-            }
-            else if ( modo == "SEMESTRAL" )
-            {
-                resultado.Add(CrearTarjeta("Semestre 1", datos, d => d.Enero + d.Febrero + d.Marzo + d.Abril + d.Mayo + d.Junio));
-                resultado.Add(CrearTarjeta("Semestre 2", datos, d => d.Julio + d.Agosto + d.Septiembre + d.Octubre + d.Noviembre + d.Diciembre));
-            }
-
-            return resultado;
-        }
-        private SubLineaPerformanceModel CrearTarjeta(string titulo, List<ClienteRankingModel> datos, Func<ClienteRankingModel, decimal> selectorVenta)
-        {
-            decimal totalPeriodo = datos.Sum(selectorVenta);
-            var topCliente = datos.OrderByDescending(selectorVenta).FirstOrDefault();
-
-            return new SubLineaPerformanceModel
-            {
-                Nombre = titulo,
-                VentaTotal = totalPeriodo, 
-                LitrosTotales = 0,
-
-                Crecimiento = 0,
-                EsPositivo = true,
-                TopProductoNombre = topCliente != null ? topCliente.Nombre : "N/A",
-                TopProductoVenta = topCliente != null ? selectorVenta(topCliente) : 0,
-
-                Bloques = new List<PeriodoBloque>()
-            };
         }
     }
 }

@@ -1,11 +1,7 @@
 ﻿using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
-
 using SkiaSharp;
-
-using System.Windows.Media;
-
 using WPF_PAR.MVVM.Models;
 
 namespace WPF_PAR.Services
@@ -29,68 +25,69 @@ namespace WPF_PAR.Services
             if ( datos == null || !datos.Any() )
                 return new ResultadoGrafico { Series = new ISeries[0], EjesX = new Axis[0] };
 
-            // ... (El código de fechas y cálculo de meses se queda IGUAL) ...
-            // COPIA AQUÍ LA LÓGICA DE FECHAS/PERIODOS QUE YA TENÍAS
             DateTime fechaReferencia = DateTime.Now;
             int anioActual = fechaReferencia.Year;
             int mesActual = fechaReferencia.Month;
+
             int mesInicio = 1;
             int mesFin = mesActual;
 
             switch ( periodo )
             {
-                case "ANUAL": mesInicio = 1; break;
-                case "SEMESTRAL": mesInicio = ( mesActual > 6 ) ? 7 : 1; break;
-                case "TRIMESTRAL": int trim = ( mesActual - 1 ) / 3 + 1; mesInicio = ( trim - 1 ) * 3 + 1; break;
+                case "ANUAL":
+                    mesInicio = 1;
+                    break;
+                case "SEMESTRAL":
+                    bool esSegundoSemestre = mesActual > 6;
+                    mesInicio = esSegundoSemestre ? 7 : 1;
+                    break;
+                case "TRIMESTRAL":
+                    int trimestre = ( mesActual - 1 ) / 3 + 1;
+                    mesInicio = ( trimestre - 1 ) * 3 + 1;
+                    break;
             }
 
             var nombresMeses = new string[] { "", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
             var etiquetas = new List<string>();
-            for ( int i = mesInicio; i <= mesFin; i++ ) etiquetas.Add(nombresMeses[i]);
-
+            for ( int i = mesInicio; i <= mesFin; i++ )
+            {
+                etiquetas.Add(nombresMeses[i]);
+            }
             var ejes = new Axis[] { new Axis { Labels = etiquetas, LabelsPaint = new SolidColorPaint(SKColors.Gray) } };
 
-            // --- AQUÍ ESTÁ EL CAMBIO PARA QUE NO SE SATURE ---
-
-            // 1. Agrupar
-            var gruposRaw = datos
+            var seriesList = new List<ISeries>();
+            var grupos = datos
                 .Where(x => x.FechaEmision.Year == anioActual)
                 .GroupBy(x => x.Linea ?? "Otros")
-                .Select(g => new
-                {
-                    Nombre = g.Key,
-                    VentaTotal = g.Sum(x => x.TotalVenta), // Calculamos venta total anual para rankear
-                    Datos = g
-                })
-                .OrderByDescending(x => x.VentaTotal) // Ordenamos de mayor a menor
-                .Take(5) // <--- ¡SOLO TOMAMOS LAS 5 MEJORES!
                 .ToList();
 
-            var seriesList = new List<ISeries>();
-
-            foreach ( var grupo in gruposRaw )
+            foreach ( var grupo in grupos )
             {
                 var valores = new List<decimal>();
                 for ( int m = mesInicio; m <= mesFin; m++ )
                 {
-                    valores.Add(grupo.Datos.Where(x => x.FechaEmision.Month == m).Sum(x => x.TotalVenta));
+                    valores.Add(grupo.Where(x => x.FechaEmision.Month == m).Sum(x => x.TotalVenta));
                 }
 
                 if ( valores.Sum() > 0 )
                 {
                     seriesList.Add(new LineSeries<decimal>
                     {
-                        Name = grupo.Nombre,
+                        Name = grupo.Key,
                         Values = valores,
-                        LineSmoothness = 1, // Curvas suaves (más moderno)
-                        GeometrySize = 8,   // Puntos visibles pero no gigantes
+                        LineSmoothness = 0.5,
+                        GeometrySize = 8,
                         Stroke = new SolidColorPaint { StrokeThickness = 3 },
-                        GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 3 }
+                        GeometryStroke = new SolidColorPaint { StrokeThickness = 3 }
                     });
                 }
             }
 
-            return new ResultadoGrafico { Series = seriesList.ToArray(), EjesX = ejes };
+            return new ResultadoGrafico
+            {
+                Series = seriesList.ToArray(),
+                EjesX = ejes
+            };
         }
         public ResultadoTopProductos GenerarTopProductos(List<VentaReporteModel> datos, bool verPorLitros)
         {
