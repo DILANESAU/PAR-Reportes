@@ -13,7 +13,6 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
 using WPF_PAR.Core;
-using WPF_PAR.Repositories;
 using WPF_PAR.Services;
 
 namespace WPF_PAR
@@ -27,7 +26,7 @@ namespace WPF_PAR
         public LoginWindow()
         {
             InitializeComponent();
-            _authService = ( ( App ) Application.Current ).Services.GetRequiredService<AuthService>();
+           _authService = new ();
         }
         protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
         {

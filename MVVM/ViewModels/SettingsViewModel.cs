@@ -1,5 +1,8 @@
-﻿using System.Collections.ObjectModel;
-
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Text;
+using System.Windows.Forms;
 using WPF_PAR.Core;
 using WPF_PAR.Services;
 using WPF_PAR.Services.Interfaces;

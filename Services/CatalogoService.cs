@@ -98,12 +98,5 @@ namespace WPF_PAR.Services
                 FamiliaCsv = "Otros"
             };
         }
-
-        public bool EsFerreteria(string articulo)
-        {
-            // Reutilizamos la lógica que ya tienes para obtener info
-            var info = ObtenerInfo(articulo);
-            return info.FamiliaSimple == "FERRETERIA";
-        }
     }
 }

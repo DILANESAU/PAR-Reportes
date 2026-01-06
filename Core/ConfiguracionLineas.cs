@@ -20,7 +20,8 @@ namespace WPF_PAR.Core
             "Industrial",
             "Tráfico",
             "Solventes",
-            "Accesorios"
+            "Accesorios",
+            "Ferretería"
         };
         public static List<string> ObtenerTodas()
         {

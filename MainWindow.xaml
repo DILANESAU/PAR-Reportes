@@ -8,11 +8,11 @@
         xmlns:v="clr-namespace:WPF_PAR.MVVM.Views"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
-        Title="Sistema Principal - PAR Reportes" Height="768" Width="1366"
+        Title="Sistema Principal - PAR Reportes" Height="700" Width="1100"
         WindowStartupLocation="CenterScreen"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
-        TextElement.FontSize="14"
+        TextElement.FontSize="13"
         FontFamily="{DynamicResource MaterialDesignFont}"
         Background="{DynamicResource MaterialDesignPaper}">
 
@@ -30,169 +30,131 @@
             <v:ClientesView/>
         </DataTemplate>
 
-        <Style x:Key="MenuRadioButtonStyle" TargetType="RadioButton" BasedOn="{StaticResource MaterialDesignFlatButton}">
-            <Setter Property="Height" Value="50"/>
-            <Setter Property="Margin" Value="10,4"/>
+        <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+            <Setter Property="Height" Value="45"/>
+            <Setter Property="Margin" Value="10,2"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Padding" Value="15,0,0,0"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}"/>
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="10"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="border" Background="Transparent" CornerRadius="10" BorderThickness="0">
-                            <Grid>
-                                <Border x:Name="Indicator" Width="4" HorizontalAlignment="Left" Background="{DynamicResource PrimaryHueMidBrush}" 
-                                        CornerRadius="2" Margin="0,8" Visibility="Collapsed"/>
+            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="22"/>
 
-                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
-                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                  Margin="{TemplateBinding Padding}"/>
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryHueLightBrush}"/>
-                                <Setter TargetName="Indicator" Property="Visibility" Value="Visible"/>
-                                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#10000000"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#15000000"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SubNavButton" TargetType="Button" BasedOn="{StaticResource NavButton}">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="50,0,0,0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Opacity" Value="0.9"/>
         </Style>
     </Window.Resources>
 
     <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsMenuOpen}">
         <materialDesign:DrawerHost.LeftDrawerContent>
-            <Grid Width="280">
+            <Grid Width="260">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <materialDesign:ColorZone Mode="PrimaryMid" Padding="25" Effect="{StaticResource MaterialDesignShadowDepth2}">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <Grid Grid.Row="0">
+                <materialDesign:ColorZone Mode="PrimaryMid" Padding="20" >
+                    <StackPanel>
+                        <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <Border CornerRadius="50" BorderBrush="White" BorderThickness="2" Width="60" Height="60">
-                                <Border.Background>
-                                    <SolidColorBrush Color="White" Opacity="0.2"/>
-                                </Border.Background>
-                                <materialDesign:PackIcon Kind="Account" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White"/>
-                            </Border>
+                            <materialDesign:PackIcon Kind="AccountCircle" Width="45" Height="45" VerticalAlignment="Center"/>
 
                             <Button Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top"
                                     Style="{StaticResource MaterialDesignIconForegroundButton}"
                                     Command="{x:Static materialDesign:DrawerHost.CloseDrawerCommand}"
-                                    Foreground="White" Opacity="0.7">
-                                <materialDesign:PackIcon Kind="MenuOpen" Width="24" Height="24"/>
+                                    ToolTip="Ocultar menú">
+                                <materialDesign:PackIcon Kind="MenuOpen" Width="20" Height="20"/>
                             </Button>
                         </Grid>
 
-                        <StackPanel Grid.Row="1" Margin="0,15,0,0">
-                            <TextBlock Text="Bienvenido," Opacity="0.7" FontSize="13" Foreground="White"/>
-                            <TextBlock Text="Administrador" FontWeight="Bold" FontSize="20" Foreground="White" TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="Sucursal Matriz" Opacity="0.7" FontSize="12" Foreground="White" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Grid>
+                        <TextBlock Text="Bienvenido," Opacity="0.8" FontSize="12" Margin="0,15,0,0"/>
+                        <TextBlock Text="Administrador" FontWeight="Bold" FontSize="18" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
                 </materialDesign:ColorZone>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,15,0,0">
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
                     <StackPanel>
-                        <TextBlock Text="PRINCIPAL" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="25,10,0,5"/>
-
-                        <RadioButton Style="{StaticResource MenuRadioButtonStyle}" Command="{Binding DashboardViewCommand}" IsChecked="True">
+                        <Button Style="{StaticResource NavButton}" Command="{Binding DashboardViewCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="ViewDashboardOutline" Width="22" Height="22" VerticalAlignment="Center" Margin="0,0,15,0"/>
-                                <TextBlock Text="Dashboard" VerticalAlignment="Center"/>
+                                <materialDesign:PackIcon Kind="ViewDashboard" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                <TextBlock Text="Dashboard General" VerticalAlignment="Center"/>
                             </StackPanel>
-                        </RadioButton>
+                        </Button>
 
-                        <TextBlock Text="OPERACIONES" FontSize="11" FontWeight="Bold" Opacity="0.4" Margin="25,20,0,5"/>
+                        <Separator Margin="10,5" Opacity="0.3"/>
+                        <TextBlock Text="REPORTES POR LÍNEA" FontSize="11" FontWeight="Bold" Opacity="0.5" Margin="20,10"/>
 
-                        <RadioButton Style="{StaticResource MenuRadioButtonStyle}" Command="{Binding FamiliaViewCommand}">
+                        <Button Style="{StaticResource NavButton}" Command="{Binding FamiliaViewCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="ChartBoxOutline" Width="22" Height="22" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                <materialDesign:PackIcon Kind="FormatPaint" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
                                 <TextBlock Text="Familias y Productos" VerticalAlignment="Center"/>
                             </StackPanel>
-                        </RadioButton>
+                        </Button>
 
-                        <RadioButton Style="{StaticResource MenuRadioButtonStyle}" Command="{Binding ClientesViewCommand}">
+                        <Button Style="{StaticResource NavButton}" Command="{Binding ClientesViewCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="AccountGroupOutline" Width="22" Height="22" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                <materialDesign:PackIcon Kind="Person" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
                                 <TextBlock Text="Clientes" VerticalAlignment="Center"/>
                             </StackPanel>
-                        </RadioButton>
+                        </Button>
                     </StackPanel>
                 </ScrollViewer>
 
-                <StackPanel Grid.Row="2" Margin="0,0,0,20">
-                    <Separator Opacity="0.1" Margin="15,10"/>
 
-                    <RadioButton Style="{StaticResource MenuRadioButtonStyle}" Command="{Binding SettingsViewCommand}">
+                <StackPanel Grid.Row="2" Margin="0,0,0,10">
+                    <Separator Opacity="0.3"/>
+                    <Button Style="{StaticResource NavButton}" Command="{Binding SettingsViewCommand}">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="CogOutline" Width="22" Height="22" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                            <materialDesign:PackIcon Kind="Cog" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
                             <TextBlock Text="Configuración" VerticalAlignment="Center"/>
                         </StackPanel>
-                    </RadioButton>
+                    </Button>
 
-                    <RadioButton Style="{StaticResource MenuRadioButtonStyle}" Background="#10FF0000" Foreground="#D32F2F" BorderThickness="0" Margin="10,5">
+                    <Button Style="{StaticResource NavButton}" Foreground="Red" Opacity="0.8">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Logout" Width="22" Height="22" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                            <materialDesign:PackIcon Kind="Logout" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,15,0"/>
                             <TextBlock Text="Cerrar Sesión" VerticalAlignment="Center"/>
                         </StackPanel>
-                    </RadioButton>
-
-                    <TextBlock Text="Versión 1.0.2" HorizontalAlignment="Center" Opacity="0.3" FontSize="10" Margin="0,10,0,0"/>
+                    </Button>
                 </StackPanel>
             </Grid>
         </materialDesign:DrawerHost.LeftDrawerContent>
 
         <DockPanel>
-            <materialDesign:ColorZone Padding="15" Mode="PrimaryMid" DockPanel.Dock="Top" Effect="{StaticResource MaterialDesignShadowDepth2}">
+            <materialDesign:ColorZone Padding="10" Mode="PrimaryMid" DockPanel.Dock="Top">
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <ToggleButton Style="{StaticResource MaterialDesignHamburgerToggleButton}" 
-                                  IsChecked="{Binding IsMenuOpen}" Width="30" Height="30" Foreground="White"/>
+                                  IsChecked="{Binding IsMenuOpen}" Width="30" Height="30"/>
 
-                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="20" FontWeight="Bold" 
-                               Text="PAR Reportes" Margin="20,0,0,0" Foreground="White"/>
-
-                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}" ToolTip="Notificaciones" Foreground="White" Margin="0,0,5,0">
-                            <materialDesign:PackIcon Kind="BellOutline"/>
-                        </Button>
-                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}" ToolTip="Ayuda" Foreground="White">
-                            <materialDesign:PackIcon Kind="HelpCircleOutline"/>
-                        </Button>
-                    </StackPanel>
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="18" FontWeight="Bold" 
+                               Text="PAR Reportes" Margin="16,0,0,0"/>
                 </Grid>
             </materialDesign:ColorZone>
 
-            <materialDesign:TransitioningContent OpeningEffect="{materialDesign:TransitionEffect FadeIn}">
-                <ContentControl Content="{Binding CurrentView}" Margin="15"/>
-            </materialDesign:TransitioningContent>
+            <ContentControl Content="{Binding CurrentView}" Margin="10"/>
         </DockPanel>
     </materialDesign:DrawerHost>
 </Window>

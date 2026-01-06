@@ -96,57 +96,5 @@ namespace WPF_PAR.Services
             else if ( ListaSucursales.Count > 0 )
                 SucursalId = ListaSucursales.Keys.First();
         }
-        SucursalesService _sucursalesService;
-        public void CargarSucursalesPermitidas()
-        {
-            // 1. Obtenemos el catálogo completo (Nombres del CSV)
-            var catalogoCompleto = _sucursalesService.CargarSucursales();
-
-            // 2. Obtenemos al usuario logueado
-            var usuario = Session.UsuarioActual;
-
-            ListaSucursales = new Dictionary<int, string>();
-
-            // CASO A: Es ADMIN -> Ve todo + Opción Global
-            if ( usuario.Rol == "Admin" )
-            {
-                ListaSucursales.Add(0, "--- TODAS LAS SUCURSALES (GLOBAL) ---");
-                foreach ( var suc in catalogoCompleto )
-                {
-                    ListaSucursales.Add(suc.Key, suc.Value);
-                }
-            }
-            // CASO B: Es Usuario Normal -> Solo ve sus permitidas
-            else
-            {
-                var permitidas = usuario.SucursalesPermitidas ?? new List<int>();
-
-                // Si tiene MÁS DE UNA, le damos la opción de ver el "Consolidado"
-                if ( permitidas.Count > 1 )
-                {
-                    ListaSucursales.Add(0, "--- MIS SUCURSALES (CONSOLIDADO) ---");
-                }
-
-                // Agregamos las sucursales individuales que le tocan
-                foreach ( var id in permitidas )
-                {
-                    // Verificamos que el ID exista en el CSV para obtener su nombre
-                    if ( catalogoCompleto.ContainsKey(id) )
-                    {
-                        ListaSucursales.Add(id, catalogoCompleto[id]);
-                    }
-                    else
-                    {
-                        // Fallback si el ID no está en el CSV
-                        ListaSucursales.Add(id, $"Sucursal {id}");
-                    }
-                }
-            }
-
-            // Pre-selección inteligente:
-            // Si solo tiene una sucursal, la seleccionamos por defecto.
-            // Si tiene varias, seleccionamos el 0 (Consolidado) o la primera.
-            SucursalId = ListaSucursales.Keys.First();
-        }
     }
 }
