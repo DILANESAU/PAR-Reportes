@@ -7,16 +7,17 @@ using System.Windows.Media;
 
 namespace WPF_PAR.Core.Converters
 {
-    // 1. Convierte TRUE (Es Futuro) a Gris, FALSE (Ya pasó) a Azul
+    //si es true lo manda gris y si es falso azul
     public class BoolToColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if ( value is bool esFuturo && esFuturo )
             {
-                return Brushes.LightGray; // Color para periodos futuros
+                return Brushes.LightGray; 
             }
-            // Color para periodos actuales/pasados (Azul Material Design)
+
+            //Material desing para los periodos y otras cosas
             return new SolidColorBrush(( Color ) ColorConverter.ConvertFromString("#2196F3"));
         }
 
@@ -26,21 +27,39 @@ namespace WPF_PAR.Core.Converters
         }
     }
 
-    // 2. Convierte TRUE (Es Futuro) a Opaco (0.3), FALSE a Visible (1.0)
+    //Si es true lo vuelve opaco pero si es false pss se ve normal
     public class BoolToOpacityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if ( value is bool esFuturo && esFuturo )
             {
-                return 0.3; // Muy transparente si es futuro
+                return 0.3;
             }
-            return 1.0; // Totalmente visible si ya pasó
+            return 1.0; 
         }
-
+        //regresa todo a la normalidad en caso de bugs visuales (sin uso por ahora)
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
+        }
+
+        //chingadera pa convertir de minusculas o capitalizado a mayusculas
+        public class ToUpperConverter : IValueConverter
+        {
+            public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                if ( value is string texto )
+                {
+                    return texto.ToUpper();
+                }
+                return value;
+            }
+
+            public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

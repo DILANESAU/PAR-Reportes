@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-
+using System.Windows.Data;
+using System.ComponentModel;
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
@@ -14,25 +15,23 @@ namespace WPF_PAR.MVVM.ViewModels
     public class ClientesViewModel : ObservableObject
     {
         private readonly ReportesService _reportesService;
-        private readonly ClientesLogicService _logicService; // Reusamos la lógica de cálculo
+        private readonly ClientesService _clientesService; // Usaremos ClientesService, no LogicService
         private readonly IDialogService _dialogService;
 
         // ---------------------------------------------------------
         // PROPIEDADES
         // ---------------------------------------------------------
 
-        // La lista principal de tarjetas (Q1, Q2...)
-        private ObservableCollection<SubLineaPerformanceModel> _listaClientes;
-        public ObservableCollection<SubLineaPerformanceModel> ListaClientes
+        // Esta es la colección que usa tu DataGrid en el XAML
+        private ObservableCollection<ClienteRankingModel> _listaClientes;
+        public ObservableCollection<ClienteRankingModel> ListaClientes
         {
             get => _listaClientes;
             set { _listaClientes = value; OnPropertyChanged(); }
         }
 
-        // Datos crudos en caché para no ir a SQL cada vez que cambias de Trimestre a Semestre
-        private List<VentaReporteModel> _datosCache;
+        private List<ClienteRankingModel> _datosCache; // Cache para filtrar sin ir a SQL
 
-        // Contador de Clientes (La enumeración que pediste)
         private int _totalClientesActivos;
         public int TotalClientesActivos
         {
@@ -40,12 +39,9 @@ namespace WPF_PAR.MVVM.ViewModels
             set { _totalClientesActivos = value; OnPropertyChanged(); }
         }
 
-        // Totales Monetarios
-        private decimal _granTotalVenta;
-        public decimal GranTotalVenta { get => _granTotalVenta; set { _granTotalVenta = value; OnPropertyChanged(); } }
+        public FilterService Filters { get; }
 
-        // Filtros
-        public FilterService Filters { get; } // Tu servicio de filtros global (Sucursal, Fechas)
+        public List<int> AñosDisponibles { get; set; } // Faltaba esta propiedad
 
         private int _anioSeleccionado;
         public int AnioSeleccionado
@@ -53,62 +49,58 @@ namespace WPF_PAR.MVVM.ViewModels
             get => _anioSeleccionado;
             set
             {
-                _textoBusqueda = value;
+                _anioSeleccionado = value;
                 OnPropertyChanged();
-                AplicarFiltrosLocales(); // Buscador en tiempo real
+                // Al cambiar el año, recargamos datos
+                if ( !IsLoading ) CargarDatos();
             }
         }
 
-        public ObservableCollection<ClienteRankingModel> ListaClientes { get; set; }
-
-        // --- KPIs ---
-        private int _clientesEnRiesgo;
-        public int ClientesEnRiesgo
+        // Propiedad para el buscador
+        private string _textoBusqueda;
+        public string TextoBusqueda
         {
-            get => _clientesEnRiesgo;
-            set { _clientesEnRiesgo = value; OnPropertyChanged(); }
+            get => _textoBusqueda;
+            set
+            {
+                _textoBusqueda = value;
+                OnPropertyChanged();
+                AplicarFiltroVisual(); // Filtra la tabla
+            }
         }
 
         private bool _isLoading;
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
 
-        // Periodo actual (para los botones)
-        private string _periodoActual = "ANUAL";
-
         // ---------------------------------------------------------
         // COMANDOS
         // ---------------------------------------------------------
         public RelayCommand ActualizarCommand { get; set; }
-        public RelayCommand CambiarPeriodoCommand { get; set; }
 
         // ---------------------------------------------------------
         // CONSTRUCTOR
         // ---------------------------------------------------------
         public ClientesViewModel(
             ReportesService reportesService,
-            ClientesLogicService logicService,
+            ClientesService clientesService, // Inyectamos ClientesService
             FilterService filterService,
             IDialogService dialogService)
         {
             _reportesService = reportesService;
-            _logicService = logicService;
+            _clientesService = clientesService;
             Filters = filterService;
             _dialogService = dialogService;
 
-            ListaClientes = new ObservableCollection<SubLineaPerformanceModel>();
-            _datosCache = new List<VentaReporteModel>();
+            ListaClientes = new ObservableCollection<ClienteRankingModel>();
+            _datosCache = new List<ClienteRankingModel>();
 
             int actual = DateTime.Now.Year;
             AñosDisponibles = new List<int> { actual, actual - 1, actual - 2, actual - 3, actual - 4 };
-            AnioSeleccionado = actual;
+            _anioSeleccionado = actual; // Asignamos directamente al campo para no disparar recarga aun
 
-            ListaClientes = new ObservableCollection<ClienteRankingModel>();
             ActualizarCommand = new RelayCommand(o => CargarDatos());
-            CambiarPeriodoCommand = new RelayCommand(p =>
-            {
-                if ( p is string periodo ) GenerateTarjetas(periodo);
-            });
 
+            Filters.OnFiltrosCambiados += CargarDatos;
             // Carga inicial
             CargarDatos();
         }
@@ -118,22 +110,14 @@ namespace WPF_PAR.MVVM.ViewModels
             IsLoading = true;
             try
             {
-                // 1. Obtenemos ventas de TODO el año actual para poder hacer comparativas (Ene-Dic)
-                // Usamos el año de la fecha seleccionada en el filtro, o el actual.
-                string anio = Filters.FechaInicio.Year.ToString();
+                // Usamos el servicio de clientes para obtener el reporte anual
+                // Nota: Asegúrate de que Filters.SucursalId tenga valor
+                var datos = await _clientesService.ObtenerReporteAnualClientes(Filters.SucursalId, AnioSeleccionado);
 
-                // Reutilizamos el método que trae datos por artículo, o creamos uno optimizado solo por cliente
-                // Para este ejemplo, asumimos que obtienes el listado de ventas detallado
-                var rawData = await _reportesService.ObtenerHistoricoAnualPorArticulo(anio, Filters.SucursalId.ToString());
+                _datosCache = datos;
+                ListaClientes = new ObservableCollection<ClienteRankingModel>(datos);
 
-                ListaClientes.Clear();
-
-                // 2. Calcular KPIs Generales
-                GranTotalVenta = _datosCache.Sum(x => x.TotalVenta); // O la propiedad que uses para sumar
-                TotalClientesActivos = _datosCache.Select(x => x.Cliente).Distinct().Count();
-
-                // 3. Generar Tarjetas con el periodo default
-                GenerateTarjetas("ANUAL"); // Por defecto muestra Trimestres (Q1-Q4)
+                TotalClientesActivos = datos.Count;
             }
             catch ( Exception ex )
             {
@@ -145,36 +129,20 @@ namespace WPF_PAR.MVVM.ViewModels
             }
         }
 
-        private void GenerateTarjetas(string periodo)
-        {
-            _periodoActual = periodo;
-            AplicarFiltrosLocales();
-        }
-
-        private void AplicarFiltrosLocales()
+        private void AplicarFiltroVisual()
         {
             if ( _datosCache == null ) return;
 
-            // 1. Filtramos los datos base por el Buscador (Texto)
-            var datosFiltrados = _datosCache.AsEnumerable();
+            IEnumerable<ClienteRankingModel> filtrado = _datosCache;
 
             if ( !string.IsNullOrWhiteSpace(TextoBusqueda) )
             {
                 string q = TextoBusqueda.ToUpper();
-                datosFiltrados = datosFiltrados.Where(x => x.Cliente != null && x.Cliente.ToUpper().Contains(q));
+                filtrado = filtrado.Where(x => x.Nombre.ToUpper().Contains(q) || x.ClaveCliente.Contains(q));
             }
 
-            // 2. Usamos el LogicService para crear las tarjetas (Q1, Q2, etc)
-            // Nota: Si periodo es "ANUAL", mandamos "TRIMESTRAL" para ver el desglose Q1-Q4
-            string modoCalculo = _periodoActual == "ANUAL" ? "TRIMESTRAL" : _periodoActual;
-
-            var listaTarjetas = _logicService.CalcularDesgloseClientes(datosFiltrados.ToList(), modoCalculo);
-
-            ListaClientes = new ObservableCollection<SubLineaPerformanceModel>(listaTarjetas);
-
-            // Actualizamos el contador visual según la búsqueda actual
-            // (Opcional: si quieres que el contador baje cuando buscas "JUAN")
-             TotalClientesActivos = ListaClientes.Count; 
+            ListaClientes = new ObservableCollection<ClienteRankingModel>(filtrado);
+            TotalClientesActivos = ListaClientes.Count;
         }
     }
 }

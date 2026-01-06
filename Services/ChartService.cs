@@ -23,7 +23,7 @@ namespace WPF_PAR.Services
         public ResultadoGrafico GenerarTendenciaLineas(List<VentaReporteModel> datos, string periodo)
         {
             if ( datos == null || !datos.Any() )
-                return new ResultadoGrafico { Series = new ISeries[0], EjesX = new Axis[0] };
+                return new ResultadoGrafico { Series = Array.Empty<ISeries>(), EjesX = new Axis[0] };
 
             DateTime fechaReferencia = DateTime.Now;
             int anioActual = fechaReferencia.Year;
@@ -105,7 +105,7 @@ namespace WPF_PAR.Services
                 .GroupBy(x => x.Descripcion)
                 .Select(g => new
                 {
-                    NombreVisual = g.Key.Length > 25 ? g.Key.Substring(0, 22) + "..." : g.Key,
+                    NombreVisual = g.Key,
                     Venta = g.Sum(v => v.TotalVenta),
                     Litros = g.Sum(v => v.LitrosTotales)
                 })
@@ -158,7 +158,7 @@ namespace WPF_PAR.Services
                 {
                     Labels = topProductos.Select(x => x.NombreVisual).ToArray(),
                     LabelsPaint = new SolidColorPaint(SKColors.Black),
-                    TextSize = 12
+                    TextSize = 11
                 }
             };
 
@@ -177,9 +177,9 @@ namespace WPF_PAR.Services
             {
                 Values = new decimal[] { x.VentaTotal },
                 Name = x.NombreLinea,
-                DataLabelsPaint = new SolidColorPaint(SKColors.White),
+                DataLabelsPaint = new SolidColorPaint(SKColors.Black),
                 DataLabelsSize = 10,
-                DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Middle,
+                DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer,
                 DataLabelsFormatter = p => $"{p.Model:C0}",
                 ToolTipLabelFormatter = (point) => $"{point.Context.Series.Name}: {point.Model:C2}"
             }).ToArray();

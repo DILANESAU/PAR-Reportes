@@ -17,7 +17,9 @@ namespace WPF_PAR.Services
             _businessLogic = businessLogic;
         }
 
-        // 1. Lógica para generar las tarjetas de resumen (Arquitectónica/Especializada)
+        // --------------------------------------------------------------------
+        // 1. Resumen Global (Tarjetas Superiores)
+        // --------------------------------------------------------------------
         public (List<FamiliaResumenModel> Arqui, List<FamiliaResumenModel> Espe) CalcularResumenGlobal(List<VentaReporteModel> ventas)
         {
             var arq = new List<FamiliaResumenModel>();
@@ -69,7 +71,75 @@ namespace WPF_PAR.Services
             return modelo;
         }
 
-        // 2. Lógica de Ordenamiento
+        // --------------------------------------------------------------------
+        // 2. ¡NUEVO MÉTODO FALTANTE! - Desglose por Periodos (Q1, Q2...)
+        // --------------------------------------------------------------------
+        // Nota: Aunque se llama "CalcularDesgloseClientes" por compatibilidad con el ViewModel,
+        // aquí agrupa por SUB-LÍNEA (Linea) para mostrar el rendimiento de los productos.
+        public List<SubLineaPerformanceModel> CalcularDesgloseClientes(List<VentaReporteModel> ventas, string periodo)
+        {
+            var resultado = new List<SubLineaPerformanceModel>();
+            if ( ventas == null || !ventas.Any() ) return resultado;
+
+            // Agrupamos por la propiedad LINEA (Ej: Impermeabilizantes -> Acrilicos, Asfalticos...)
+            var grupos = ventas.GroupBy(x => x.Linea ?? "Otros");
+
+            int mesActual = DateTime.Now.Month;
+
+            foreach ( var grupo in grupos )
+            {
+                var item = new SubLineaPerformanceModel
+                {
+                    Nombre = grupo.Key,
+                    VentaTotal = grupo.Sum(x => x.TotalVenta),
+                    LitrosTotales = grupo.Sum(x => x.LitrosTotales),
+                    Bloques = new List<PeriodoBloque>()
+                };
+
+                // Generar los bloques según el periodo solicitado
+                if ( periodo == "SEMESTRAL" )
+                {
+                    item.Bloques.Add(CrearBloque("S1", grupo.ToList(), 1, 6, mesActual));
+                    item.Bloques.Add(CrearBloque("S2", grupo.ToList(), 7, 12, mesActual));
+                }
+                else // TRIMESTRAL (Default)
+                {
+                    item.Bloques.Add(CrearBloque("Q1", grupo.ToList(), 1, 3, mesActual));
+                    item.Bloques.Add(CrearBloque("Q2", grupo.ToList(), 4, 6, mesActual));
+                    item.Bloques.Add(CrearBloque("Q3", grupo.ToList(), 7, 9, mesActual));
+                    item.Bloques.Add(CrearBloque("Q4", grupo.ToList(), 10, 12, mesActual));
+                }
+
+                resultado.Add(item);
+            }
+
+            // Ordenamos por venta total descendente
+            return resultado.OrderByDescending(x => x.VentaTotal).ToList();
+        }
+
+        private PeriodoBloque CrearBloque(string etiqueta, List<VentaReporteModel> ventas, int mesInicio, int mesFin, int mesActual)
+        {
+            // Filtramos las ventas que caen en este rango de meses
+            var ventasPeriodo = ventas
+                .Where(x => x.FechaEmision.Month >= mesInicio && x.FechaEmision.Month <= mesFin)
+                .ToList();
+
+            // Determinamos si es un periodo futuro para pintarlo gris en la UI
+            // (Si el inicio del bloque es mayor al mes actual)
+            bool esFuturo = mesInicio > mesActual;
+
+            return new PeriodoBloque
+            {
+                Etiqueta = etiqueta,
+                Valor = ventasPeriodo.Sum(x => x.TotalVenta),
+                Litros = ventasPeriodo.Sum(x => x.LitrosTotales),
+                EsFuturo = esFuturo
+            };
+        }
+
+        // --------------------------------------------------------------------
+        // 3. Utilidades (Ordenamiento, CSV, Vacíos)
+        // --------------------------------------------------------------------
         public List<FamiliaResumenModel> OrdenarTarjetas(IEnumerable<FamiliaResumenModel> lista, string criterio)
         {
             if ( lista == null ) return new List<FamiliaResumenModel>();
@@ -79,7 +149,6 @@ namespace WPF_PAR.Services
                 : lista.OrderBy(x => x.NombreFamilia).ToList();
         }
 
-        // 3. Lógica para preparar el CSV (Sin guardar archivo, solo generar el texto)
         public string GenerarContenidoCSV(IEnumerable<VentaReporteModel> ventas)
         {
             var sb = new StringBuilder();
@@ -96,7 +165,6 @@ namespace WPF_PAR.Services
             return sb.ToString();
         }
 
-        // 4. Lógica para inicializar vacío
         public List<FamiliaResumenModel> ObtenerTarjetasVacias(string lineaActual)
         {
             List<string> nombres;

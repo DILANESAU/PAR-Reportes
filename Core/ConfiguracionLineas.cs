@@ -12,7 +12,6 @@ namespace WPF_PAR.Core
             "Esmaltes",
             "Impermeabilizantes",
             "Selladores",
-            "Maderas"
         };
 
         public static readonly List<string> Especializada = new List<string>
@@ -21,7 +20,6 @@ namespace WPF_PAR.Core
             "Tráfico",
             "Solventes",
             "Accesorios",
-            "Ferretería"
         };
         public static List<string> ObtenerTodas()
         {

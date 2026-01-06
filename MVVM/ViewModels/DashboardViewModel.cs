@@ -21,7 +21,7 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class DashboardViewModel : ObservableObject
     {
-        private readonly VentasServices _ventasService;
+        private readonly ReportesService _reporteServices;
         private readonly IDialogService _dialogService;
         public FilterService Filters { get; }
 
@@ -79,7 +79,7 @@ namespace WPF_PAR.MVVM.ViewModels
         public ObservableCollection<ClienteRecienteItem> UltimosClientesList { get; set; }
 
         // Mantenemos tu lista original por si la usas en otra parte
-        public ObservableCollection<VentasModel> ListaVentas { get; set; }
+        public ObservableCollection<VentaReporteModel> ListaVentas { get; set; }
 
         // ---------------------------------------------------------
         // 5. ESTADO
@@ -92,11 +92,8 @@ namespace WPF_PAR.MVVM.ViewModels
         }
 
         // --- COLECCIONES Y GRÁFICOS ---
-        public ObservableCollection<VentasModel> ListaVentas { get; set; }
 
         public ISeries[] SeriesGrafico { get; set; }
-        public Axis[] EjeX { get; set; }
-        public Axis[] EjeY { get; set; }
 
         public ISeries[] SeriesHistorico { get; set; }
         public Axis[] EjeXHistorico { get; set; }
@@ -107,17 +104,17 @@ namespace WPF_PAR.MVVM.ViewModels
         // ---------------------------------------------------------
         // CONSTRUCTOR
         // ---------------------------------------------------------
-        public DashboardViewModel(VentasServices ventasService, IDialogService dialogService, FilterService filterService)
+        public DashboardViewModel(ReportesService reportesServices, IDialogService dialogService, FilterService filterService)
         {
             _dialogService = dialogService;
             Filters = filterService;
-            _ventasService = ventasService;
+            _reporteServices = reportesServices;
 
             // Inicialización
             FiltrosFecha = new ObservableCollection<string> { "Hoy", "Esta Semana", "Este Mes", "Anual" };
             TopProductosList = new ObservableCollection<TopProductoItem>();
             UltimosClientesList = new ObservableCollection<ClienteRecienteItem>();
-            ListaVentas = new ObservableCollection<VentasModel>();
+            ListaVentas = new ObservableCollection<VentaReporteModel>();
 
             // Comandos
             ActualizarCommand = new RelayCommand(o => CargarDatos());
@@ -127,7 +124,7 @@ namespace WPF_PAR.MVVM.ViewModels
             // Estilos base de Ejes
             EjeX = new Axis[] { new Axis { LabelsPaint = new SolidColorPaint(SKColors.Gray) } };
             EjeY = new Axis[] { new Axis { Labeler = v => $"{v:C0}", LabelsPaint = new SolidColorPaint(SKColors.Gray) } };
-
+            Filters.OnFiltrosCambiados += CargarDatos;
             // Carga inicial
             PeriodoSeleccionado = "Este Mes"; // Esto lanzará ActualizarCommand
         }
@@ -138,19 +135,19 @@ namespace WPF_PAR.MVVM.ViewModels
             try
             {
                 // 1. OBTENER DATOS REALES (Tu servicio)
-                var datosRango = await _ventasService.ObtenerVentasRangoAsync(
+                var datosRango = await _reporteServices.ObtenerVentasRangoAsync(
                     Filters.SucursalId,
                     Filters.FechaInicio,
                     Filters.FechaFin
                 );
 
-                ListaVentas = new ObservableCollection<VentasModel>(datosRango);
+                ListaVentas = new ObservableCollection<VentaReporteModel>(datosRango);
 
                 // 2. CALCULAR KPIs Y LISTAS (Lógica nueva con tus datos)
                 ProcesarDatosResumen(datosRango);
 
                 // 3. OBTENER HISTÓRICO PARA EL GRÁFICO (Tu servicio)
-                var datosAnuales = await _ventasService.ObtenerVentaAnualAsync(
+                var datosAnuales = await _reporteServices.ObtenerVentaAnualAsync(
                     Filters.SucursalId,
                     Filters.FechaFin.Year
                 );
@@ -167,7 +164,7 @@ namespace WPF_PAR.MVVM.ViewModels
             }
         }
 
-        private void ProcesarDatosResumen(List<VentasModel> datos)
+        private void ProcesarDatosResumen(List<VentaReporteModel> datos)
         {
             if ( datos == null || !datos.Any() )
             {
@@ -180,7 +177,7 @@ namespace WPF_PAR.MVVM.ViewModels
             }
 
             // A. KPIs Básicos
-            KpiVentas = datos.Sum(x => x.PrecioTotal);
+            KpiVentas = datos.Sum(x => x.TotalVenta);
             KpiTransacciones = datos.Count;
             KpiClientes = datos.Select(x => x.Cliente).Distinct().Count();
 
@@ -192,7 +189,7 @@ namespace WPF_PAR.MVVM.ViewModels
                 {
                     // Usamos el nombre del cliente en lugar del producto
                     Nombre = string.IsNullOrEmpty(g.Key) ? "Público General" : g.Key,
-                    Monto = g.Sum(x => x.PrecioTotal)
+                    Monto = g.Sum(x => x.TotalVenta)
                 })
                 .OrderByDescending(x => x.Monto)
                 .Take(5)
@@ -207,12 +204,12 @@ namespace WPF_PAR.MVVM.ViewModels
             // C. Generar Lista ÚLTIMOS CLIENTES (Clientes Recientes)
             // Tomamos las últimas 5 ventas ordenadas por fecha
             var ultimos = datos
-                .OrderByDescending(x => x.Fecha)
+                .OrderByDescending(x => x.FechaEmision)
                 .Take(5) // Tomamos las últimas 5 transacciones
                 .Select(x => new ClienteRecienteItem
                 {
                     Nombre = string.IsNullOrEmpty(x.Cliente) ? "Público General" : x.Cliente,
-                    Fecha = x.Fecha,
+                    Fecha = x.FechaEmision,
                     Iniciales = ObtenerIniciales(x.Cliente)
                 })
                 .ToList();
@@ -220,7 +217,7 @@ namespace WPF_PAR.MVVM.ViewModels
             UltimosClientesList = new ObservableCollection<ClienteRecienteItem>(ultimos);
         }
 
-        private void ConfigurarGraficoPrincipal(List<VentasModel> datosAnuales)
+        private void ConfigurarGraficoPrincipal(List<VentaReporteModel> datosAnuales)
         {
             // Reusamos tu lógica de mapeo mensual
             var valores = new decimal[12];
@@ -230,7 +227,7 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 if ( int.TryParse(item.Mov, out int mes) && mes >= 1 && mes <= 12 )
                 {
-                    valores[mes - 1] = item.PrecioTotal;
+                    valores[mes - 1] = item.TotalVenta;
                 }
             }
 

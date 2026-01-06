@@ -35,12 +35,12 @@ namespace WPF_PAR
 
             services.AddTransient<FamiliaLogicService>();
             services.AddTransient<ChartService>();
-            services.AddTransient<VentasServices>();
+            //services.AddTransient<VentasServices>();
             services.AddTransient<ClientesService>();
             services.AddTransient<ReportesService>();
             services.AddTransient<CatalogoService>();
             services.AddTransient<AuthService>();
-            services.AddTransient<ClientesLogicService>(); 
+            //services.AddTransient<ClientesLogicService>(); 
 
             services.AddTransient<MainViewModel>();
             services.AddTransient<DashboardViewModel>();
