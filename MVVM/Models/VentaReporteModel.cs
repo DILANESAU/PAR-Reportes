@@ -26,7 +26,7 @@ namespace WPF_PAR.MVVM.Models
         public decimal Descuento { get; set; }
 
         // Propiedad calculada: Total de la línea (Cantidad * Precio - Descuento)
-        public decimal TotalVenta => ( ( decimal ) Cantidad * PrecioUnitario ) - Descuento;
+        public decimal TotalVenta { get; set; }
 
         // --- LITROS ---
         public double LitrosUnitarios { get; set; }

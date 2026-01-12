@@ -3,102 +3,138 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-             Background="{DynamicResource MaterialDesignPaper}">
+             Background="Transparent">
 
-    <Grid Margin="40">
-        <StackPanel MaxWidth="600" HorizontalAlignment="Left">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="40">
+        <StackPanel MaxWidth="1000" HorizontalAlignment="Center">
 
-            <TextBlock Text="Ajustes y Personalización" Style="{StaticResource MaterialDesignHeadline4TextBlock}" Margin="0,0,0,30"/>
+            <StackPanel Margin="0,0,0,30" HorizontalAlignment="Center">
+                <TextBlock Text="Configuración" Style="{StaticResource PageTitleStyle}" Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center"/>
+                <TextBlock Text="Personaliza tu experiencia y preferencias" Style="{StaticResource PageSubtitleStyle}" Foreground="{DynamicResource MaterialDesignBody}"/>
+            </StackPanel>
 
-            <materialDesign:Card Padding="20" UniformCornerRadius="8" Margin="0,0,0,20">
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                        <materialDesign:PackIcon Kind="ThemeLightDark" Width="25" Height="25" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBlock Text="Apariencia" Style="{StaticResource MaterialDesignHeadline6TextBlock}"/>
-                    </StackPanel>
+            <WrapPanel Orientation="Horizontal">
 
-                    <Separator Margin="0,0,0,15"/>
-
+                <materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="450" Height="180" Margin="0,0,30,30">
                     <Grid>
-                        <StackPanel>
-                            <TextBlock Text="Modo Oscuro" FontWeight="Bold"/>
-                            <TextBlock Text="Cambia entre tema claro y oscuro para descansar la vista." Opacity="0.6" FontSize="12"/>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="25" Width="40" Height="40">
+                                <materialDesign:PackIcon Kind="ThemeLightDark" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                            </Border>
+                            <TextBlock Text="Tema Visual" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="15,0,0,0"/>
                         </StackPanel>
 
-                        <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
-                                      IsChecked="{Binding IsDarkMode}"
-                                      HorizontalAlignment="Right"/>
+                        <Grid Grid.Row="1" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Modo Oscuro" Style="{StaticResource PageTitleStyle}" Foreground="{DynamicResource MaterialDesignBody}"  />
+                                <TextBlock Text="Reduce la fatiga visual en ambientes con poca luz." Opacity="0.5" FontSize="13" TextWrapping="Wrap" Margin="0,5,10,0" Style="{StaticResource PageTitleStyle}" Foreground="{DynamicResource MaterialDesignBody}" />
+                            </StackPanel>
+                            <ToggleButton Grid.Column="1" IsChecked="{Binding IsDarkMode}" Style="{StaticResource MaterialDesignSwitchToggleButton}" Height="30" Width="60"/>
+                        </Grid>
                     </Grid>
-                </StackPanel>
-            </materialDesign:Card>
-            
-            
+                </materialDesign:Card>
 
-            <materialDesign:Card Padding="20" UniformCornerRadius="8">
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                        <materialDesign:PackIcon Kind="Palette" Width="25" Height="25" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBlock Text="Color del Sistema" Style="{StaticResource MaterialDesignHeadline6TextBlock}"/>
-                    </StackPanel>
+                <materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="450" Height="180" Margin="0,0,30,30">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                    <Separator Margin="0,0,0,15"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="25" Width="40" Height="40">
+                                <materialDesign:PackIcon Kind="StoreMarker" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                            </Border>
+                            <TextBlock Text="Sucursal Predeterminada" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                        </StackPanel>
 
-                    <TextBlock Text="Selecciona el color de acento principal:" Margin="0,0,0,15"/>
+                        <StackPanel Grid.Row="1">
+                            <TextBlock Text="Se seleccionará automáticamente al iniciar sesión." Opacity="0.5" FontSize="13" Margin="0,0,0,10"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox ItemsSource="{Binding MisSucursales}" 
+                                          SelectedValue="{Binding MiSucursalDefault}"
+                                          DisplayMemberPath="Value" SelectedValuePath="Key"
+                                          materialDesign:HintAssist.Hint="Seleccionar Sucursal"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}" VerticalAlignment="Center"/>
 
-                    <ItemsControl ItemsSource="{Binding ColoresDisponibles}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+                                <Button Grid.Column="1" Command="{Binding GuardarCommand}" Style="{StaticResource MaterialDesignIconForegroundButton}" ToolTip="Guardar Cambios" Margin="10,0,0,0">
+                                    <materialDesign:PackIcon Kind="ContentSave" Width="24" Height="24" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </materialDesign:Card>
 
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button Width="50" Height="50" Margin="0,0,15,15"
-                                        Background="{Binding CodigoHex}"
+                <materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="930" Margin="0,0,30,30">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="25" Width="40" Height="40">
+                                <materialDesign:PackIcon Kind="Palette" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                            </Border>
+                            <TextBlock Text="Personalización de Color" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                        </StackPanel>
+
+                        <TextBlock Text="Elige el color de énfasis para botones y elementos destacados:" Opacity="0.6" Margin="0,0,0,15"/>
+
+                        <ItemsControl ItemsSource="{Binding ColoresDisponibles}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Width="50" Height="50" Margin="0,0,15,15"
+                                        Background="{Binding CodigoHex}" 
                                         BorderBrush="{Binding CodigoHex}"
                                         Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
                                         Command="{Binding DataContext.CambiarColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding CodigoHex}"
                                         ToolTip="{Binding Nombre}">
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </materialDesign:Card>
 
-            <materialDesign:Card Padding="20" UniformCornerRadius="8" Margin="0,20,0,0">
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                        <materialDesign:PackIcon Kind="StoreMarker" Width="25" Height="25" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBlock Text="Preferencias de Inicio" Style="{StaticResource MaterialDesignHeadline6TextBlock}"/>
+                                        <materialDesign:PackIcon Kind="Check" 
+                                            Width="24" Height="24" 
+                                            Foreground="White"
+                                            Visibility="{Binding EsSeleccionado, Converter={StaticResource BoolToVis}}"/>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
-                    <Separator Margin="0,0,0,15"/>
+                </materialDesign:Card>
 
-                    <TextBlock Text="Selecciona la sucursal que se cargará automáticamente al iniciar:" Margin="0,0,0,10"/>
-
-                    <ComboBox materialDesign:HintAssist.Hint="Sucursal Predeterminada"
-                        Style="{StaticResource MaterialDesignFloatingHintComboBox}"
-                        ItemsSource="{Binding MisSucursales}"
-                        DisplayMemberPath="Value"
-                        SelectedValuePath="Key"
-                        SelectedValue="{Binding MiSucursalDefault}"
-                        Width="250" HorizontalAlignment="Left"/>
-                    <Button Command="{Binding GuardarCommand}"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Margin="0,15,0,0"
-                        ToolTip="Guardar esta sucursal como predeterminada">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="ContentSave" Margin="0,0,8,0"/>
-                            <TextBlock Text="Guardar"/>
+                <materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="930" Margin="0,0,30,30">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Kind="InformationOutline" Width="50" Height="50" Foreground="#B0BEC5" VerticalAlignment="Top" Margin="0,10,20,0"/>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Acerca de PAR Reportes" FontWeight="Bold" FontSize="16"/>
+                            <TextBlock Text="Versión 1.0.2 - Compilación 2025" Opacity="0.5" FontSize="12" Margin="0,2,0,10"/>
+                            <TextBlock Text="Desarrollado para uso interno. Si encuentras algún error o necesitas un reporte adicional, contacta al departamento de sistemas." TextWrapping="Wrap" Opacity="0.7"/>
+                            <Button Style="{StaticResource MaterialDesignFlatButton}" HorizontalAlignment="Left" Margin="-10,10,0,0"
+                                    Content="VER REGISTRO DE CAMBIOS" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
                         </StackPanel>
-                    </Button>
-                </StackPanel>
-                
-            </materialDesign:Card>
+                    </Grid>
+                </materialDesign:Card>
+
+            </WrapPanel>
         </StackPanel>
-        
-        
-    </Grid>
+    </ScrollViewer>
 </UserControl>

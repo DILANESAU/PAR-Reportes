@@ -2,121 +2,59 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             mc:Ignorable="d" 
+             d:DesignHeight="800" d:DesignWidth="1200"
              TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-             Background="{DynamicResource MaterialDesignPaper}">
+             Background="Transparent">
 
-    <UserControl.Resources>
-        <Style x:Key="CellMoney" TargetType="TextBlock">
-            <Setter Property="HorizontalAlignment" Value="Right"/>
-            <Setter Property="FontSize" Value="11"/>
-        </Style>
-    </UserControl.Resources>
-
-    <Grid Margin="20">
+    <Grid Margin="30">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="Análisis Anual de Clientes" Style="{StaticResource MaterialDesignHeadline5TextBlock}" FontWeight="Bold"/>
-            <TextBlock Text="Visualiza el comportamiento mes a mes y detecta tendencias." Opacity="0.6"/>
+        <StackPanel Grid.Row="0" Margin="0,0,0,25">
+            <TextBlock Text="Cartera de Clientes" Style="{StaticResource PageTitleStyle}"/>
+            <TextBlock Text="Análisis detallado de comportamiento y tendencias anuales" Style="{StaticResource PageSubtitleStyle}"/>
         </StackPanel>
 
-        <materialDesign:Card Grid.Row="1" Margin="0,0,0,20" Padding="20" UniformCornerRadius="8">
+        <materialDesign:Card Grid.Row="1" Style="{StaticResource FilterBarStyle}">
             <StackPanel Orientation="Horizontal">
                 <ComboBox ItemsSource="{Binding Filters.ListaSucursales}" 
                           SelectedValue="{Binding Filters.SucursalId}"
                           DisplayMemberPath="Value" SelectedValuePath="Key"
-                          materialDesign:HintAssist.Hint="Sucursal" Width="200" Margin="0,0,20,0"
-                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"/>
+                          materialDesign:HintAssist.Hint="Sucursal" Width="220" Margin="0,0,20,0"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
 
                 <ComboBox ItemsSource="{Binding AñosDisponibles}"
-                          SelectedItem="{Binding AnioSeleccionado, UpdateSourceTrigger=PropertyChanged}"
-                          materialDesign:HintAssist.Hint="Año" Width="100" Margin="0,0,20,0"
-                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"/>
+                          SelectedItem="{Binding AnioSeleccionado}"
+                          materialDesign:HintAssist.Hint="Año Fiscal" Width="120" Margin="0,0,20,0"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
+
+                <TextBox Text="{Binding TextoBusqueda, UpdateSourceTrigger=PropertyChanged}"
+                         materialDesign:HintAssist.Hint="Buscar cliente..."
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         Width="300" Margin="20,0,0,0" VerticalAlignment="Top"/>
 
                 <Button Command="{Binding ActualizarCommand}" Content="CONSULTAR" 
-                        Style="{StaticResource MaterialDesignRaisedButton}" Margin="0,0,0,10"/>
+                        Style="{StaticResource MaterialDesignRaisedButton}" Margin="20,0,0,0"/>
             </StackPanel>
         </materialDesign:Card>
 
-        <materialDesign:Card Grid.Row="2" UniformCornerRadius="8" Padding="0">
+        <materialDesign:Card Grid.Row="2" Style="{StaticResource ContentCardStyle}" Padding="0">
             <DataGrid ItemsSource="{Binding ListaClientes}" 
-                      FrozenColumnCount="1" 
                       Style="{StaticResource ModernDataGrid}"
-                      CanUserSortColumns="True">
-
+                      FrozenColumnCount="1">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="CLIENTE" Binding="{Binding Nombre}" Width="200" FontWeight="SemiBold"/>
-
+                    <DataGridTextColumn Header="CLIENTE" Binding="{Binding Nombre}" Width="250" FontWeight="SemiBold"/>
                     <DataGridTextColumn Header="ENE" Binding="{Binding Enero, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="FEB" Binding="{Binding Febrero, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="MAR" Binding="{Binding Marzo, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="ABR" Binding="{Binding Abril, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="MAY" Binding="{Binding Mayo, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="JUN" Binding="{Binding Junio, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="JUL" Binding="{Binding Julio, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="AGO" Binding="{Binding Agosto, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="SEP" Binding="{Binding Septiembre, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="OCT" Binding="{Binding Octubre, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="NOV" Binding="{Binding Noviembre, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-                    <DataGridTextColumn Header="DIC" Binding="{Binding Diciembre, StringFormat=N0}" ElementStyle="{StaticResource CellMoney}"/>
-
-                    <DataGridTemplateColumn Header="TOTAL ANUAL" Width="140" SortMemberPath="TotalAnual">
+                    <DataGridTemplateColumn Header="TOTAL" Width="120">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border CornerRadius="4" Padding="8,4">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Background" Value="Transparent"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Tendencia}" Value="DOWN">
-                                                    <Setter Property="Background" Value="#20F44336"/>
-                                                    <Setter Property="BorderBrush" Value="#F44336"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Tendencia}" Value="UP">
-                                                    <Setter Property="Background" Value="#204CAF50"/>
-                                                    <Setter Property="BorderBrush" Value="#4CAF50"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <materialDesign:PackIcon Kind="TrendingUp" Foreground="Green" Margin="0,0,5,0">
-                                            <materialDesign:PackIcon.Style>
-                                                <Style TargetType="materialDesign:PackIcon" BasedOn="{StaticResource {x:Type materialDesign:PackIcon}}">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Tendencia}" Value="UP">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </materialDesign:PackIcon.Style>
-                                        </materialDesign:PackIcon>
-
-                                        <materialDesign:PackIcon Kind="TrendingDown" Foreground="Red" Margin="0,0,5,0">
-                                            <materialDesign:PackIcon.Style>
-                                                <Style TargetType="materialDesign:PackIcon" BasedOn="{StaticResource {x:Type materialDesign:PackIcon}}">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Tendencia}" Value="DOWN">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </materialDesign:PackIcon.Style>
-                                        </materialDesign:PackIcon>
-
-                                        <TextBlock Text="{Binding TotalAnual, StringFormat=C2}" FontWeight="Bold"/>
-                                    </StackPanel>
-                                </Border>
+                                <TextBlock Text="{Binding TotalAnual, StringFormat=C0}" FontWeight="Bold" HorizontalAlignment="Right"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -124,19 +62,8 @@
             </DataGrid>
         </materialDesign:Card>
 
-        <Grid Grid.RowSpan="3" Background="#90FFFFFF" 
-              Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
-            <materialDesign:Card UniformCornerRadius="10" Padding="30" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel HorizontalAlignment="Center">
-                    <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}" 
-                                 Value="0" IsIndeterminate="True"
-                                 Width="50" Height="50" Margin="0,0,0,20"
-                                 Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-
-                    <TextBlock Text="Procesando Datos..." FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Por favor espere un momento" Opacity="0.6" FontSize="12" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-                </StackPanel>
-            </materialDesign:Card>
+        <Grid Grid.Row="2" Background="#90FFFFFF" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+            <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}" IsIndeterminate="True" Width="50" Height="50"/>
         </Grid>
     </Grid>
 </UserControl>

@@ -1,70 +1,85 @@
 ﻿using MaterialDesignThemes.Wpf;
+
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Windows.Media;
 
 namespace WPF_PAR.Services
 {
-    class ThemeService
+    public class ThemeService
     {
-        private readonly PaletteHelper _paletteHelper = new();
-
+        private readonly PaletteHelper _paletteHelper = new PaletteHelper();
+        public static event Action<bool> ThemeChanged;
         public void SetThemeMode(bool isDark)
         {
             Theme theme = _paletteHelper.GetTheme();
 
+            // Usamos el enum BaseTheme (Dark/Light)
             theme.SetBaseTheme(isDark ? BaseTheme.Dark : BaseTheme.Light);
+
+            if ( isDark )
+            {
+                theme.Cards.Background = Color.FromRgb(48, 48, 48);
+                theme.Background = Color.FromRgb(30, 30, 30);
+            }
+            else
+            {
+                theme.Cards.Background = Colors.White;
+                theme.Background = Color.FromRgb(244, 246, 249);
+            }
 
             _paletteHelper.SetTheme(theme);
 
             // Guardar preferencia
-            Properties.Settings.Default.IsDarkMode = isDark;
-            Properties.Settings.Default.Save();
+            try
+            {
+                Properties.Settings.Default.IsDarkMode = isDark;
+                Properties.Settings.Default.Save();
+            }
+            catch { }
+            ThemeChanged?.Invoke(isDark);
         }
-        // Cambiar Color Primario
+
         public void SetPrimaryColor(string colorName)
         {
-            Color color = System.Windows.Media.Colors.Purple; // Default
+            Color color = Colors.Purple; // Default
 
             try
             {
-                // Convertir string Hex o Nombre a Color
-                color = ( Color ) ColorConverter.ConvertFromString(colorName);
+                var convert = ColorConverter.ConvertFromString(colorName);
+                if ( convert is Color c ) color = c;
             }
             catch { }
 
-            // CAMBIO: Usamos 'Theme' aquí también
             Theme theme = _paletteHelper.GetTheme();
 
-            // En v5, SetPrimaryColor acepta directamente el color
             theme.SetPrimaryColor(color);
-
-            double luminancia = ( color.R * 0.299 + color.G * 0.587 + color.B * 0.114 );
-
-            Color colorTexto = luminancia < 130 ? Colors.White : Colors.Black;
-
-            theme.PrimaryMid = new MaterialDesignColors.ColorPair(color, colorTexto);
 
             _paletteHelper.SetTheme(theme);
 
-            // Guardar preferencia
-            Properties.Settings.Default.PrimayColor = colorName;
-            Properties.Settings.Default.Save();
+            try
+            {
+                Properties.Settings.Default.PrimayColor = colorName;
+                Properties.Settings.Default.Save();
+            }
+            catch { }
         }
 
-        // Cargar lo guardado al iniciar la app
         public void LoadSavedTheme()
         {
-            // Cargar Modo
-            bool isDark = Properties.Settings.Default.IsDarkMode;
-            SetThemeMode(isDark);
-
-            // Cargar Color
-            string color = Properties.Settings.Default.PrimayColor;
-            if ( !string.IsNullOrEmpty(color) )
+            try
             {
-                SetPrimaryColor(color);
+                bool isDark = Properties.Settings.Default.IsDarkMode;
+                SetThemeMode(isDark);
+
+                string color = Properties.Settings.Default.PrimayColor;
+                if ( !string.IsNullOrEmpty(color) )
+                {
+                    SetPrimaryColor(color);
+                }
+            }
+            catch
+            {
+                SetThemeMode(false);
             }
         }
     }

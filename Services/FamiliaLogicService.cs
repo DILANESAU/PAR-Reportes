@@ -20,16 +20,17 @@ namespace WPF_PAR.Services
         // --------------------------------------------------------------------
         // 1. Resumen Global (Tarjetas Superiores)
         // --------------------------------------------------------------------
+        // 1. Lógica para generar las tarjetas de resumen (Arquitectónica/Especializada)
         public (List<FamiliaResumenModel> Arqui, List<FamiliaResumenModel> Espe) CalcularResumenGlobal(List<VentaReporteModel> ventas)
         {
             var arq = new List<FamiliaResumenModel>();
             var esp = new List<FamiliaResumenModel>();
 
-            if ( ventas == null || !ventas.Any() ) return (arq, esp);
+            // CORRECCIÓN: No nos salimos si es null/vacío. 
+            // En su lugar, inicializamos 'grupos' como una lista vacía para que el código siga fluyendo.
+            var grupos = ventas?.GroupBy(x => x.Familia).ToList() ?? new List<IGrouping<string, VentaReporteModel>>();
 
-            var grupos = ventas.GroupBy(x => x.Familia).ToList();
-
-            // Procesar Arquitectónica
+            // Procesar Arquitectónica (Ahora SIEMPRE entra aquí y crea las tarjetas en 0)
             foreach ( var nombre in ConfiguracionLineas.Arquitectonica )
             {
                 arq.Add(CrearTarjeta(nombre, grupos));
@@ -71,11 +72,6 @@ namespace WPF_PAR.Services
             return modelo;
         }
 
-        // --------------------------------------------------------------------
-        // 2. ¡NUEVO MÉTODO FALTANTE! - Desglose por Periodos (Q1, Q2...)
-        // --------------------------------------------------------------------
-        // Nota: Aunque se llama "CalcularDesgloseClientes" por compatibilidad con el ViewModel,
-        // aquí agrupa por SUB-LÍNEA (Linea) para mostrar el rendimiento de los productos.
         public List<SubLineaPerformanceModel> CalcularDesgloseClientes(List<VentaReporteModel> ventas, string periodo)
         {
             var resultado = new List<SubLineaPerformanceModel>();
@@ -116,7 +112,6 @@ namespace WPF_PAR.Services
             // Ordenamos por venta total descendente
             return resultado.OrderByDescending(x => x.VentaTotal).ToList();
         }
-
         private PeriodoBloque CrearBloque(string etiqueta, List<VentaReporteModel> ventas, int mesInicio, int mesFin, int mesActual)
         {
             // Filtramos las ventas que caen en este rango de meses
@@ -148,23 +143,33 @@ namespace WPF_PAR.Services
                 ? lista.OrderByDescending(x => x.VentaTotal).ToList()
                 : lista.OrderBy(x => x.NombreFamilia).ToList();
         }
-
         public string GenerarContenidoCSV(IEnumerable<VentaReporteModel> ventas)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Fecha,Sucursal,Folio,Clave,Producto,Familia,Cliente,Cantidad,Litros Totales,Total Venta");
+
+            // 1. ENCABEZADOS: Agrega 'Movimiento' y 'Folio' aunque no se vean en la app
+            sb.AppendLine("Fecha,Sucursal,Movimiento,Folio,Cliente,Articulo,Cantidad,Precio Unitario,Total Venta");
 
             foreach ( var v in ventas )
             {
-                string desc = v.Descripcion?.Replace("\"", "\"\"") ?? "";
-                string fam = v.Familia?.Replace("\"", "\"\"") ?? "";
-                string cte = v.Cliente?.Replace("\"", "\"\"") ?? "";
-
-                sb.AppendLine($"{v.FechaEmision:dd/MM/yyyy},{v.Sucursal},{v.MovID},{v.Articulo},\"{desc}\",\"{fam}\",\"{cte}\",{v.Cantidad},{v.LitrosTotales},{v.TotalVenta}");
+                // 2. FILAS: Aquí es donde vuelcas la data oculta al Excel
+                sb.AppendLine(string.Format("{0:dd/MM/yyyy},{1},{2},{3},{4},{5},{6},{7},{8}",
+                    v.FechaEmision,
+                    v.Sucursal,
+                    v.Mov,           // <--- EL DATO OCULTO 1 (Factura/Devolucion)
+                    v.MovID,         // <--- EL DATO OCULTO 2 (Folio)
+                    Sanitize(v.Cliente),
+                    Sanitize(v.Descripcion ?? v.Articulo),
+                    v.Cantidad,
+                    v.PrecioUnitario,
+                    v.TotalVenta
+                ));
             }
             return sb.ToString();
         }
 
+        private string Sanitize(string input) =>
+            string.IsNullOrEmpty(input) ? "" : input.Replace(",", " ").Replace("\r", "").Replace("\n", "");
         public List<FamiliaResumenModel> ObtenerTarjetasVacias(string lineaActual)
         {
             List<string> nombres;

@@ -1,62 +1,78 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-
+﻿using Microsoft.Extensions.DependencyInjection; // Necesario para acceder a App.Services si fuera necesario
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 using WPF_PAR.Core;
 using WPF_PAR.Services;
 
 namespace WPF_PAR
 {
-    /// <summary>
-    /// Lógica de interacción para LoginWindow.xaml
-    /// </summary>
     public partial class LoginWindow : Window
     {
-        private AuthService _authService;
-        public LoginWindow()
+        private readonly AuthService _authService;
+
+        // CAMBIO 1: Inyección de Dependencias en el Constructor
+        // En lugar de hacer 'new', pedimos el servicio al constructor.
+        // El contenedor de App.xaml.cs se encargará de pasártelo automáticamente.
+        public LoginWindow(AuthService authService)
         {
             InitializeComponent();
-           _authService = new ();
+            _authService = authService;
         }
+
         protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
         {
             base.OnMouseLeftButtonDown(e);
             this.DragMove();
         }
+
         private void BtnCerrar_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
         }
+
+        // Sugerencia: Permitir dar Enter en la caja de contraseña para entrar
+        private void TxtPass_KeyDown(object sender, KeyEventArgs e)
+        {
+            if ( e.Key == Key.Enter )
+            {
+                BtnLogin_Click(sender, e);
+            }
+        }
+
         private async void BtnLogin_Click(object sender, RoutedEventArgs e)
         {
             string user = txtUser.Text;
             string pass = txtPass.Password;
+
+            if ( string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass) )
+            {
+                MessageBox.Show("Por favor ingresa usuario y contraseña.", "Datos Incompletos", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             BtnLogin.IsEnabled = false;
             BtnLogin.Content = "Verificando...";
 
             try
             {
-                // 1. Validar credenciales (Ahora con AWAIT)
+                // Usamos el servicio inyectado (ya no el 'new')
                 var usuario = await _authService.ValidarLoginAsync(user, pass);
 
                 if ( usuario != null )
                 {
+                    // Guardamos sesión
                     Session.UsuarioActual = usuario;
 
-                    var mainWindow = ( ( App ) Application.Current ).Services.GetRequiredService<MainWindow>();
-                    mainWindow.Show();
+                    // CAMBIO 2: Usar el método maestro de App.xaml.cs
+                    // Esto asegura que el Dashboard se abra con ViewModel, Snackbar y todo conectado.
+                    if ( Application.Current is App myApp )
+                    {
+                        myApp.AbrirMainWindow();
+                    }
 
+                    // Cerramos el login
                     this.Close();
                 }
                 else
@@ -70,7 +86,6 @@ namespace WPF_PAR
             }
             finally
             {
-                // Restaurar estado del botón
                 BtnLogin.IsEnabled = true;
                 BtnLogin.Content = "INICIAR SESIÓN";
             }

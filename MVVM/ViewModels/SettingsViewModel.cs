@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Windows.Forms;
+
 using WPF_PAR.Core;
+using WPF_PAR.MVVM.Models;
 using WPF_PAR.Services;
 using WPF_PAR.Services.Interfaces;
 
@@ -22,11 +24,16 @@ namespace WPF_PAR.MVVM.ViewModels
             get => _isDarkMode;
             set
             {
-                _isDarkMode = value;
-                _themeService.SetThemeMode(value);
+                if ( _isDarkMode != value )
+                {
+                    _isDarkMode = value;
+                    OnPropertyChanged();
+
+                    _themeService.SetThemeMode(_isDarkMode);
+                }
             }
         }
-        public ObservableCollection<ColorItem> ColoresDisponibles { get; set; }
+        public ObservableCollection<OpcionColor> ColoresDisponibles { get; set; }
         public RelayCommand CambiarColorCommand { get; set; }
         public RelayCommand GuardarCommand { get; set; }
         public SettingsViewModel(IDialogService dialogService)
@@ -36,18 +43,39 @@ namespace WPF_PAR.MVVM.ViewModels
             _themeService = new ThemeService();
             _sucursalesService = new SucursalesService();
 
-            IsDarkMode = Properties.Settings.Default.IsDarkMode;
-            GuardarCommand = new RelayCommand(o => GuardarTodo());
-            ColoresDisponibles = new ObservableCollection<ColorItem>
-            {
-                new () { Nombre = "Purple", CodigoHex = "#9C27B0" },
-                new () { Nombre = "BlueGrey", CodigoHex = "#607D8B" }
-            };
+            try
+            { _isDarkMode = Properties.Settings.Default.IsDarkMode; }
+            catch
+            { _isDarkMode = false;}
 
-            CambiarColorCommand = new RelayCommand(colorHex =>
+            GuardarCommand = new RelayCommand(o => GuardarTodo());
+
+            ColoresDisponibles = new ObservableCollection<OpcionColor>
             {
-                if ( colorHex is string codigo )
-                    _themeService.SetPrimaryColor(codigo);
+                new OpcionColor { Nombre = "Morado (Default)", CodigoHex = "#673AB7" },
+                new OpcionColor { Nombre = "Azul", CodigoHex = "#2196F3" },
+                new OpcionColor { Nombre = "Verde", CodigoHex = "#4CAF50" },
+                new OpcionColor { Nombre = "Naranja", CodigoHex = "#FF9800" },
+                new OpcionColor { Nombre = "Rojo", CodigoHex = "#F44336" },
+                new OpcionColor { Nombre = "Rosa", CodigoHex = "#E91E63" },
+                new OpcionColor { Nombre = "Verde Azulado", CodigoHex = "#009688" },
+                new OpcionColor { Nombre = "Gris Azulado", CodigoHex = "#607D8B" }
+            };
+            string colorGuardado = Properties.Settings.Default.PrimayColor;
+            if ( string.IsNullOrEmpty(colorGuardado) ) colorGuardado = "#673AB7"; // Default
+
+            MarcarColorSeleccionado(colorGuardado);
+
+            CambiarColorCommand = new RelayCommand(param =>
+            {
+                if ( param is string hex )
+                {
+                    // Cambiar el tema visualmente
+                    _themeService.SetPrimaryColor(hex);
+
+                    // Actualizar la palomita en la UI
+                    MarcarColorSeleccionado(hex);
+                }
             });
             CargarConfiguracionSucursales();
         }
@@ -91,6 +119,15 @@ namespace WPF_PAR.MVVM.ViewModels
         {
             public string Nombre { get; set; }
             public string CodigoHex { get; set; }
+        }
+        private void MarcarColorSeleccionado(string hex)
+        {
+            foreach ( var color in ColoresDisponibles )
+            {
+                // Si el hex coincide, lo marcamos como True, si no, False
+                // Usamos ToUpper() para evitar problemas de mayúsculas/minúsculas
+                color.EsSeleccionado = color.CodigoHex.ToUpper() == hex.ToUpper();
+            }
         }
     }
 }

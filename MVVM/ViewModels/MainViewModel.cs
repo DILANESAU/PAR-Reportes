@@ -66,7 +66,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
             // D. CONFIGURAR COMANDOS
             DashboardViewCommand = new RelayCommand(o => CurrentView = DashboardVM);
-            FamiliaViewCommand = new RelayCommand(o => { CurrentView = FamiliaVM; FamiliaVM.CargarPorLinea("Todas"); });
+            FamiliaViewCommand = new RelayCommand(o => { CurrentView = FamiliaVM; FamiliaVM.CargarDatosIniciales(); });
             ClientesViewCommand = new RelayCommand(o => CurrentView = ClientesVM);
             SettingsViewCommand = new RelayCommand(o => CurrentView = SettingsVM);
 
