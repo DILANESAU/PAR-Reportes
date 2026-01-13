@@ -148,6 +148,7 @@ namespace WPF_PAR.MVVM.ViewModels
             var diccionario = _sucursalesService.CargarSucursales();
             if ( diccionario == null || diccionario.Count == 0 )
             {
+
                 _notificationService.ShowError("No se pudo cargar el catálogo de sucursales (archivo no encontrado).");
             }
             foreach ( var item in diccionario )
@@ -243,7 +244,10 @@ namespace WPF_PAR.MVVM.ViewModels
 
             bool isDark = false;
             try { isDark = Properties.Settings.Default.IsDarkMode; } catch { }
-            var colorEtiquetas = isDark ? SKColors.White.WithAlpha(200) : SKColors.Gray;
+            var colorTexto = isDark ? SKColors.White : SKColors.DarkKhaki;
+
+            // Líneas divisorias: Blanco muy transparente en Dark, Gris claro en Light
+            var colorSeparador = isDark ? SKColors.White.WithAlpha(30) : SKColors.Gray.WithAlpha(30);
 
             if ( periodoTipo == "Este Año" )
             {
@@ -317,10 +321,10 @@ namespace WPF_PAR.MVVM.ViewModels
         new Axis
         {
             Labels = etiquetas,
-            LabelsPaint = new SolidColorPaint(colorEtiquetas),
+            LabelsPaint = new SolidColorPaint(colorTexto),
             TextSize = 12,
             // Si sientes que los números del mes se amontonan, descomenta esto:
-            // LabelsRotation = 0, 
+            LabelsRotation = 0, 
         }
             };
 
@@ -329,9 +333,9 @@ namespace WPF_PAR.MVVM.ViewModels
         new Axis
         {
             Labeler = v => $"{v:C0}",
-            LabelsPaint = new SolidColorPaint(colorEtiquetas),
+            LabelsPaint = new SolidColorPaint(colorTexto),
             TextSize = 12,
-            SeparatorsPaint = new SolidColorPaint(colorEtiquetas.WithAlpha(20))
+            SeparatorsPaint = new SolidColorPaint(colorSeparador)
         }
             };
         }

@@ -1,23 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 using System.Windows.Data;
 using System.Windows.Media;
 
 namespace WPF_PAR.Core.Converters
 {
-    //si es true lo manda gris y si es falso azul
+    // 1. BOOL A COLOR (Azul / Gris)
     public class BoolToColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if ( value is bool esFuturo && esFuturo )
             {
-                return Brushes.LightGray; 
+                return Brushes.LightGray;
             }
-
-            //Material desing para los periodos y otras cosas
             return new SolidColorBrush(( Color ) ColorConverter.ConvertFromString("#2196F3"));
         }
 
@@ -27,7 +23,7 @@ namespace WPF_PAR.Core.Converters
         }
     }
 
-    //Si es true lo vuelve opaco pero si es false pss se ve normal
+    // 2. BOOL A OPACIDAD
     public class BoolToOpacityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -36,30 +32,75 @@ namespace WPF_PAR.Core.Converters
             {
                 return 0.3;
             }
-            return 1.0; 
+            return 1.0;
         }
-        //regresa todo a la normalidad en caso de bugs visuales (sin uso por ahora)
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
         }
+    }
 
-        //chingadera pa convertir de minusculas o capitalizado a mayusculas
-        public class ToUpperConverter : IValueConverter
+    // 3. TEXTO A MAYÚSCULAS (Corregido: Ya no está dentro de la clase anterior)
+    public class ToUpperConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            if ( value is string texto )
             {
-                if ( value is string texto )
-                {
-                    return texto.ToUpper();
-                }
-                return value;
+                return texto.ToUpper();
+            }
+            return value;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    // 4. MONTO A COLOR (Verde / Rojo)
+    public class MontoColorConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if ( value is decimal monto )
+            {
+                if ( monto < 0 )
+                    return new SolidColorBrush(( Color ) ColorConverter.ConvertFromString("#E53935")); // Rojo
+
+                return new SolidColorBrush(( Color ) ColorConverter.ConvertFromString("#4CAF50")); // Verde
+            }
+            return Brushes.Black;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    // 5. BOOL A VISIBILIDAD (Con soporte para "Invert")
+    public class BoolToVisConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            bool valorBooleano = false;
+
+            if ( value is bool b )
+                valorBooleano = b;
+
+            // Lógica de inversión
+            if ( parameter != null && parameter.ToString() == "Invert" )
+            {
+                valorBooleano = !valorBooleano;
             }
 
-            public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-            {
-                throw new NotImplementedException();
-            }
+            return valorBooleano ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
         }
     }
 }

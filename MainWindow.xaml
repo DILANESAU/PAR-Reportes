@@ -122,7 +122,7 @@
         </Style>
     </Window.Resources>
 
-    <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsMenuOpen}">
+    <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsMenuOpen, Mode=TwoWay}">
         <materialDesign:DrawerHost.LeftDrawerContent>
             <Grid Width="280" Background="{DynamicResource MaterialDesignPaper}">
                 <Grid.RowDefinitions>
@@ -236,7 +236,7 @@
                     </Grid.ColumnDefinitions>
 
                     <ToggleButton Style="{StaticResource MaterialDesignHamburgerToggleButton}" 
-                                  IsChecked="{Binding IsMenuOpen}" 
+                                  IsChecked="{Binding IsMenuOpen, Mode=TwoWay}" 
                                   Width="40" Height="40" 
                                   Foreground="{DynamicResource MaterialDesignBody}"/>
 

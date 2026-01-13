@@ -133,7 +133,8 @@
                         <Button Command="{Binding DataContext.ExportarGlobalCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 Style="{StaticResource MaterialDesignOutlinedButton}"
                                 ToolTip="Descargar todas las ventas del periodo en Excel"
-                                BorderBrush="#43A047" Foreground="#2E7D32">
+                                BorderBrush="#43A047" Foreground="#2E7D32"
+                                Margin="50,0,0,0">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="FileExcel" Margin="0,0,8,0" Foreground="#2E7D32"/>
                                 <TextBlock Text="Exportar Todo"/>
@@ -256,7 +257,7 @@
                                     <materialDesign:Card Margin="0,0,20,0" Style="{StaticResource ContentCardStyle}">
                                         <Grid>
                                             <TextBlock Text="{Binding TituloGraficoPastel}" FontWeight="Bold" Opacity="0.6" FontSize="16"/>
-                                            <lvc:PieChart Series="{Binding SeriesDetalle}" LegendPosition="Right" InitialRotation="-90" TooltipTextSize="16" Margin="0,20,0,0"/>
+                                            <lvc:PieChart Series="{Binding SeriesDetalle}" LegendPosition="Right" InitialRotation="-90" TooltipTextSize="16" Margin="0,20,0,0" Background="Transparent"/>
                                         </Grid>
                                     </materialDesign:Card>
 
@@ -270,7 +271,7 @@
                                                 <TextBlock Text="Top Productos / Clientes" FontWeight="Bold" Opacity="0.6" FontSize="16" VerticalAlignment="Center"/>
                                                 <ToggleButton HorizontalAlignment="Right" IsChecked="{Binding VerPorLitros}" Style="{StaticResource MaterialDesignSwitchToggleButton}" ToolTip="Cambiar Venta/Litros"/>
                                             </Grid>
-                                            <lvc:CartesianChart Grid.Row="1" Series="{Binding SeriesTendencia}" XAxes="{Binding EjeXTendencia}" YAxes="{Binding EjeYTendencia}" TooltipTextSize="14"/>
+                                            <lvc:CartesianChart Grid.Row="1" Series="{Binding SeriesTendencia}" XAxes="{Binding EjeXTendencia}" YAxes="{Binding EjeYTendencia}" TooltipTextSize="14" Background="Transparent"/>
                                         </Grid>
                                     </materialDesign:Card>
                                 </Grid>

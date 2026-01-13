@@ -184,5 +184,82 @@ namespace WPF_PAR.Services
                 ToolTipLabelFormatter = (point) => $"{point.Context.Series.Name}: {point.Model:C2}"
             }).ToArray();
         }
+        public ResultadoGrafico GenerarGraficoLineas(List<GraficoPuntoModel> datos, string periodicidad)
+        {
+            // 1. Validación básica
+            if ( datos == null ) datos = new List<GraficoPuntoModel>();
+
+            List<string> etiquetas = new List<string>();
+            int cantidadPuntos = 0;
+
+            // 2. Configurar Ejes X según lo que pidió el usuario
+            switch ( periodicidad )
+            {
+                case "TRIMESTRAL":
+                    etiquetas = new List<string> { "Tri 1", "Tri 2", "Tri 3", "Tri 4" };
+                    cantidadPuntos = 4;
+                    break;
+                case "SEMESTRAL":
+                    etiquetas = new List<string> { "Sem 1", "Sem 2" };
+                    cantidadPuntos = 2;
+                    break;
+                case "MENSUAL":
+                default:
+                    etiquetas = new List<string> { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
+                    cantidadPuntos = 12;
+                    break;
+            }
+
+            // 3. Alinear datos (Rellenar con ceros los periodos sin venta)
+            // Esto es vital: Si solo vendió en Marzo (3), necesitamos [0, 0, 100, 0, 0...]
+            var valores = new List<decimal>();
+            for ( int i = 1; i <= cantidadPuntos; i++ )
+            {
+                // Busamos si existe el índice (Mes/Trimestre) en los datos
+                var punto = datos.FirstOrDefault(x => x.Indice == i);
+                valores.Add(punto?.Total ?? 0);
+            }
+
+            // 4. Construir la Serie Visual
+            var series = new ISeries[]
+            {
+                new LineSeries<decimal>
+                {
+                    Name = "Compras",
+                    Values = valores,
+                    Stroke = new SolidColorPaint(SKColors.DodgerBlue) { StrokeThickness = 4 },
+                    Fill = new SolidColorPaint(SKColors.DodgerBlue.WithAlpha(50)), // Relleno semitransparente bonito
+                    GeometrySize = 12, // Puntos visibles
+                    GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 3 },
+                    LineSmoothness = 0.5, // Curva suave
+                    DataLabelsPaint = new SolidColorPaint(SKColors.Black),
+                    DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Top,
+                    DataLabelsFormatter = p =>
+                    {
+                        if (p.Model == 0) return "";
+                        if (p.Model >= 1000000) return $"${p.Model/1000000:N1}M"; // Ejemplo: $7.2M
+                        if (p.Model >= 1000) return $"${p.Model/1000:N0}K";       // Ejemplo: $500K
+                        return $"{p.Model:C0}";
+                    } // Solo muestra número si > 0
+                }
+            };
+
+            // 5. Configurar el Eje X visual
+            var ejeX = new Axis[]
+            {
+                new Axis
+                {
+                    Labels = etiquetas,
+                    LabelsPaint = new SolidColorPaint(SKColors.Gray),
+                    TextSize = 12
+                }
+            };
+
+            return new ResultadoGrafico
+            {
+                Series = series,
+                EjesX = ejeX
+            };
+        }
     }
 }

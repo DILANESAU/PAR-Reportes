@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Linq; // Necesario para GroupBy, Select, Sum, etc.
+using System.Threading.Tasks;
 
 using WPF_PAR.MVVM.Models;
 
@@ -14,119 +15,162 @@ namespace WPF_PAR.Services
         {
             _sqlHelper = new SqlHelper();
         }
-        public async Task<List<ClienteRankingModel>> ObtenerReporteAnualClientes(int sucursalId, int anio)
+
+        // ==============================================================================
+        // MÉTODO PRINCIPAL: TRAE TODO EL DESGLOSE MENSUAL (BASE DE LA TABLA DINÁMICA)
+        // ==============================================================================
+        public async Task<List<ClienteAnalisisModel>> ObtenerDatosBase(int anioActual, int sucursalId)
         {
-            string query = @"
-        SELECT 
-            c.Cliente AS Clave,
-            ISNULL(c.Nombre, 'Cliente Mostrador') AS Nombre,
-            
-            -- PIVOTE MANUAL DE MESES
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 1 THEN v.PrecioTotal ELSE 0 END) AS Ene,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 2 THEN v.PrecioTotal ELSE 0 END) AS Feb,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 3 THEN v.PrecioTotal ELSE 0 END) AS Mar,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 4 THEN v.PrecioTotal ELSE 0 END) AS Abr,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 5 THEN v.PrecioTotal ELSE 0 END) AS May,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 6 THEN v.PrecioTotal ELSE 0 END) AS Jun,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 7 THEN v.PrecioTotal ELSE 0 END) AS Jul,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 8 THEN v.PrecioTotal ELSE 0 END) AS Ago,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 9 THEN v.PrecioTotal ELSE 0 END) AS Sep,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 10 THEN v.PrecioTotal ELSE 0 END) AS Oct,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 11 THEN v.PrecioTotal ELSE 0 END) AS Nov,
-            SUM(CASE WHEN MONTH(v.FechaEmision) = 12 THEN v.PrecioTotal ELSE 0 END) AS Dic
+            int anioAnterior = anioActual - 1;
+            string filtroSucursal = sucursalId > 0 ? "AND v.Sucursal = @Sucursal" : "";
 
-        FROM Venta v
-        LEFT JOIN Cte c ON v.Cliente = c.Cliente
-        WHERE 
-            v.Estatus = 'CONCLUIDO'
-            AND v.Sucursal = @Sucursal
-            AND YEAR(v.FechaEmision) = @Anio
-        GROUP BY 
-            c.Cliente, c.Nombre
-        HAVING 
-            SUM(v.PrecioTotal) > 0 -- Solo clientes que compraron algo en el año
-        ORDER BY 
-            SUM(v.PrecioTotal) DESC"; // Ordenamos por el que más compró en total
-
-            var parametros = new Dictionary<string, object>
-    {
-        { "@Sucursal", sucursalId },
-        { "@Anio", anio }
-    };
-
-            return await _sqlHelper.QueryAsync(query, parametros, lector => new ClienteRankingModel
-            {
-                ClaveCliente = lector["Clave"].ToString(),
-                Nombre = lector["Nombre"].ToString(),
-                Enero = Convert.ToDecimal(lector["Ene"]),
-                Febrero = Convert.ToDecimal(lector["Feb"]),
-                Marzo = Convert.ToDecimal(lector["Mar"]),
-                Abril = Convert.ToDecimal(lector["Abr"]),
-                Mayo = Convert.ToDecimal(lector["May"]),
-                Junio = Convert.ToDecimal(lector["Jun"]),
-                Julio = Convert.ToDecimal(lector["Jul"]),
-                Agosto = Convert.ToDecimal(lector["Ago"]),
-                Septiembre = Convert.ToDecimal(lector["Sep"]),
-                Octubre = Convert.ToDecimal(lector["Oct"]),
-                Noviembre = Convert.ToDecimal(lector["Nov"]),
-                Diciembre = Convert.ToDecimal(lector["Dic"])
-            });
-        }
-        public async Task<List<ClienteRankingModel>> ObtenerRankingClientes(int sucursalId, DateTime inicioActual, DateTime finActual, DateTime inicioAnterior, DateTime finAnterior)
-        {
-
-            string query = @"
-                SELECT 
-                    c.Cliente AS Clave,
-                    ISNULL(c.Nombre, 'Cliente Mostrador') AS Nombre,
-                    
-                    -- Venta del rango seleccionado (ACTUAL)
-                    ISNULL(SUM(CASE 
-                        WHEN v.FechaEmision >= @Inicio AND v.FechaEmision < DATEADD(day, 1, @Fin) 
-                        THEN v.PrecioTotal 
-                        ELSE 0 
-                    END), 0) AS VentaActual,
-                    
-                    -- Venta del rango espejo (ANTERIOR)
-                    ISNULL(SUM(CASE 
-                        WHEN v.FechaEmision >= @InicioAnt AND v.FechaEmision < DATEADD(day, 1, @FinAnt) 
-                        THEN v.PrecioTotal 
-                        ELSE 0 
-                    END), 0) AS VentaAnterior
-
-                FROM Venta v
-                LEFT JOIN Cte c ON v.Cliente = c.Cliente
-                WHERE 
-                    v.Estatus = 'CONCLUIDO'
-                    AND v.Sucursal = @Sucursal
-                   AND (
-                (v.FechaEmision >= @InicioActual AND v.FechaEmision < DATEADD(day, 1, @FinActual)) OR 
-                (v.FechaEmision >= @InicioAnterior AND v.FechaEmision < DATEADD(day, 1, @FinAnterior))
-            )
-                GROUP BY 
-                    c.Cliente, c.Nombre
-                HAVING 
-                    SUM(v.PrecioTotal) > 0
-                ORDER BY 
-                    VentaActual DESC";
-
-            // NOTA SQL: Usamos DATEADD(day, 1, @Fin) y '<' para incluir todas las horas del último día seleccionado.
+            // Consulta optimizada para traer solo lo necesario: Cliente, Mes y Total
+            string query = $@"
+            SELECT 
+                v.Cliente,
+                ISNULL(MAX(c.Nombre), 'Cliente General') AS Nombre,
+                v.Ejercicio,
+                MONTH(v.FechaEmision) as Mes,
+                SUM(v.PrecioTotal) as Total
+            FROM Venta v
+            LEFT JOIN Cte c ON v.Cliente = c.Cliente
+            WHERE 
+                v.Estatus = 'CONCLUIDO'
+                {filtroSucursal}
+                AND v.Ejercicio IN (@AnioActual, @AnioAnterior)
+                AND (v.Mov LIKE 'Factura%' OR v.Mov LIKE 'Remisi%n%' OR v.Mov LIKE 'Nota%')
+            GROUP BY v.Cliente, v.Ejercicio, MONTH(v.FechaEmision)";
 
             var parametros = new Dictionary<string, object>
             {
-                { "@Sucursal", sucursalId },
-                { "@InicioActual", inicioActual },
-                { "@FinActual", finActual },
-                { "@InicioAnterior", inicioAnterior },
-                { "@FinAnterior", finAnterior }
+                { "@AnioActual", anioActual },
+                { "@AnioAnterior", anioAnterior },
+                { "@Sucursal", sucursalId }
             };
 
-            return await _sqlHelper.QueryAsync(query, parametros, lector => new ClienteRankingModel
+            // 1. Ejecutamos Query y traemos lista plana
+            var listaCruda = await _sqlHelper.QueryAsync(query, parametros, r => new
             {
-                ClaveCliente = lector["Clave"].ToString(),
-                Nombre = lector["Nombre"].ToString(),
-                //VentaAnterior = Convert.ToDecimal(lector["VentaAnterior"]),
-                //VentaActual = Convert.ToDecimal(lector["VentaActual"])
+                Cliente = r["Cliente"].ToString(),
+                Nombre = r["Nombre"].ToString(),
+                Ejercicio = Convert.ToInt32(r["Ejercicio"]),
+                Mes = Convert.ToInt32(r["Mes"]),
+                Total = Convert.ToDecimal(r["Total"])
+            });
+
+            // 2. Procesamos en Memoria (Transformación a Modelo Rico)
+            var clientesAgrupados = listaCruda
+                .GroupBy(x => new { x.Cliente, x.Nombre })
+                .Select(g => new ClienteAnalisisModel
+                {
+                    Cliente = g.Key.Cliente,
+                    Nombre = g.Key.Nombre,
+
+                    // Llenamos arreglos de 12 posiciones (Mes 1 a 12)
+                    VentasMensualesActual = Enumerable.Range(1, 12)
+                        .Select(m => g.Where(x => x.Ejercicio == anioActual && x.Mes == m).Sum(v => v.Total))
+                        .ToArray(),
+
+                    VentasMensualesAnterior = Enumerable.Range(1, 12)
+                        .Select(m => g.Where(x => x.Ejercicio == anioAnterior && x.Mes == m).Sum(v => v.Total))
+                        .ToArray()
+                })
+                .Where(x => x.VentasMensualesActual.Sum() > 0 || x.VentasMensualesAnterior.Sum() > 0) // Filtrar sin movimiento
+                .OrderByDescending(x => x.VentasMensualesActual.Sum()) // Ordenar por el que más vendió este año
+                .ToList();
+
+            return clientesAgrupados;
+        }
+
+        // ==============================================================================
+        // MÉTODO SECUNDARIO: KPIs INDIVIDUALES
+        // ==============================================================================
+        public async Task<KpiClienteModel> ObtenerKpisCliente(string cliente, int anio, int sucursalId)
+        {
+            string filtroSucursal = sucursalId > 0 ? "AND Sucursal = @Sucursal" : "";
+
+            string query = $@"
+            SELECT 
+                COUNT(DISTINCT MovID) as Frecuencia,
+                ISNULL(SUM(PrecioTotal), 0) as TotalVenta,
+                MAX(FechaEmision) as UltimaFecha
+            FROM Venta
+            WHERE 
+                Estatus = 'CONCLUIDO'
+                AND Cliente = @Cliente
+                AND Ejercicio = @Anio
+                {filtroSucursal}
+                AND (Mov LIKE 'Factura%' OR Mov LIKE 'Remisi%n%' OR Mov LIKE 'Nota%')";
+
+            var parametros = new Dictionary<string, object>
+            {
+                { "@Cliente", cliente },
+                { "@Anio", anio },
+                { "@Sucursal", sucursalId }
+            };
+
+            return await _sqlHelper.QueryAsync(query, parametros, r =>
+            {
+                int freq = Convert.ToInt32(r["Frecuencia"]);
+                decimal total = Convert.ToDecimal(r["TotalVenta"]);
+
+                return new KpiClienteModel
+                {
+                    FrecuenciaCompra = freq,
+                    UltimaCompra = r["UltimaFecha"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(r["UltimaFecha"]),
+                    TicketPromedio = freq > 0 ? total / freq : 0
+                };
+            }).ContinueWith(t => t.Result.FirstOrDefault() ?? new KpiClienteModel());
+        }
+
+        // ==============================================================================
+        // MÉTODO SECUNDARIO: PRODUCTOS TOP (Subidas y Bajadas)
+        // ==============================================================================
+        public async Task<List<ProductoAnalisisModel>> ObtenerVariacionProductos(string cliente, int anioActual, int sucursalId)
+        {
+            int anioAnterior = anioActual - 1;
+            string filtroSucursal = sucursalId > 0 ? "AND v.Sucursal = @Sucursal" : "";
+
+            string query = $@"
+            WITH CalculoBase AS (
+                SELECT 
+                    vd.Articulo,
+                    ISNULL(MAX(a.Descripcion1), MAX(vd.Articulo)) as Descripcion,
+                    
+                    ISNULL(SUM(CASE WHEN v.Ejercicio = @AnioActual THEN (vd.Cantidad * vd.Precio) ELSE 0 END), 0) AS VentaActual,
+                    ISNULL(SUM(CASE WHEN v.Ejercicio = @AnioAnterior THEN (vd.Cantidad * vd.Precio) ELSE 0 END), 0) AS VentaAnterior
+
+                FROM VentaD vd
+                JOIN Venta v ON vd.ID = v.ID
+                LEFT JOIN Art a ON vd.Articulo = a.Articulo
+                WHERE 
+                    v.Cliente = @Cliente
+                    AND v.Estatus = 'CONCLUIDO'
+                    {filtroSucursal} 
+                    AND v.Ejercicio IN (@AnioActual, @AnioAnterior)
+                GROUP BY vd.Articulo
+            )
+            SELECT TOP 10 
+                *,
+                (VentaActual - VentaAnterior) AS Diferencia
+            FROM CalculoBase
+            WHERE (VentaActual - VentaAnterior) <> 0 
+            ORDER BY ABS(VentaActual - VentaAnterior) DESC";
+
+            var parametros = new Dictionary<string, object>
+            {
+                { "@Cliente", cliente },
+                { "@AnioActual", anioActual },
+                { "@AnioAnterior", anioAnterior },
+                { "@Sucursal", sucursalId }
+            };
+
+            return await _sqlHelper.QueryAsync(query, parametros, r => new ProductoAnalisisModel
+            {
+                Articulo = r["Articulo"].ToString(),
+                Descripcion = r["Descripcion"].ToString(),
+                VentaActual = Convert.ToDecimal(r["VentaActual"]),
+                VentaAnterior = Convert.ToDecimal(r["VentaAnterior"])
             });
         }
     }

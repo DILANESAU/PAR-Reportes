@@ -98,23 +98,17 @@ GROUP BY
 
             return await _sqlHelper.QueryAsync(query, parametros, lector =>
             {
-                // Leemos los totales CALCULADOS POR SQL (que ya traen el signo correcto)
                 decimal importeTotalSql = lector["ImporteBrutoTotal"] != DBNull.Value ? Convert.ToDecimal(lector["ImporteBrutoTotal"]) : 0m;
                 double cantidadSql = lector["CantidadTotal"] != DBNull.Value ? Convert.ToDouble(lector["CantidadTotal"]) : 0d;
                 decimal descuento = lector["DescuentoTotal"] != DBNull.Value ? Convert.ToDecimal(lector["DescuentoTotal"]) : 0m;
 
-                // Calculamos precio unitario solo para referencia (visual), evitando división entre cero
                 decimal precioUnitarioVisual = 0;
-                if ( Math.Abs(cantidadSql) > 0.001 ) // Si cantidad no es cero
+                if ( Math.Abs(cantidadSql) > 0.001 )
                 {
-                    // Usamos valor absoluto para que el precio unitario se vea "bonito" (positivo) en la tabla
-                    // aunque el total sea negativo.
                     precioUnitarioVisual = Math.Abs(importeTotalSql / ( decimal ) cantidadSql);
                 }
                 else if ( lector["Mov"].ToString().Contains("Bonifica") )
                 {
-                    // Si es bonificación (Cant=0), el precio unitario visual es el importe total (en negativo)
-                    // o lo dejamos en 0 según prefieras.
                     precioUnitarioVisual = importeTotalSql;
                 }
 
@@ -127,16 +121,11 @@ GROUP BY
                     Articulo = lector["Articulo"].ToString().Trim(),
                     Cliente = lector["NombreCliente"].ToString(),
 
-                    // ASIGNAMOS DIRECTO DEL SQL
-                    Cantidad = cantidadSql,          // Ya viene negativo o 0
+                    Cantidad = cantidadSql,
                     Descuento = descuento,
+                    TotalVenta = importeTotalSql,
 
-                    // IMPORTANTE:
-                    // Asegúrate de asignar el TotalVenta DIRECTO del SQL para que la bonificación (Cant=0) tenga valor.
-                    // Si tu clase no tiene 'TotalVenta' con 'set', usa 'PrecioUnitario' o ajusta tu modelo.
-                    TotalVenta = importeTotalSql,    // <--- ESTO ARREGLA QUE LA BONIFICACIÓN SEA 0
-
-                    PrecioUnitario = Math.Abs(precioUnitarioVisual) // Solo para mostrar
+                    PrecioUnitario = Math.Abs(precioUnitarioVisual) 
                 };
             });
         }
@@ -199,11 +188,8 @@ GROUP BY
 
             return await _sqlHelper.QueryAsync(query, parametros, lector =>
             {
-                // Mapeo corregido para usar los totales calculados por SQL
                 decimal importeBruto = lector["ImporteBrutoTotal"] != DBNull.Value ? Convert.ToDecimal(lector["ImporteBrutoTotal"]) : 0m;
                 double cantidad = lector["CantidadTotal"] != DBNull.Value ? Convert.ToDouble(lector["CantidadTotal"]) : 0d;
-
-                // Evitamos división entre cero para el precio unitario visual
                 decimal precioVisual = 0;
                 if ( Math.Abs(cantidad) > 0.001 )
                 {
@@ -212,14 +198,11 @@ GROUP BY
 
                 return new VentaReporteModel
                 {
-                    // Creamos una fecha dummy con el mes (Periodo) para que el gráfico sepa dónde ponerlo
                     FechaEmision = new DateTime(int.Parse(ejercicio), Convert.ToInt32(lector["Periodo"]), 1),
 
                     Articulo = lector["Articulo"].ToString().Trim(),
                     Cliente = lector["NombreCliente"].ToString(),
                     Cantidad = cantidad,
-
-                    // ¡AQUÍ ESTÁ LA CLAVE! Asignamos el dinero directo de SQL
                     TotalVenta = importeBruto,
 
                     PrecioUnitario = precioVisual,
@@ -228,24 +211,16 @@ GROUP BY
             });
         }
 
-        // =========================================================================
-        // SECCIÓN 2: REPORTES GENERALES / CABECERA (KPIs, Dashboard)
-        // Usado por: DashboardViewModel
-        // (Anteriormente en VentasServices)
-        // =========================================================================
-
-        // En ReportesService.cs
-
         public async Task<List<VentaReporteModel>> ObtenerVentasRangoAsync(int sucursalId, DateTime inicio, DateTime fin)
         {
-            // Lógica para filtrar sucursal: Si es 0 o -1, traemos todas
             string filtroSucursal = sucursalId > 0 ? "AND vd.Sucursal = @Sucursal" : "";
 
             string query = $@"
     SELECT 
         v.FechaEmision, 
         vd.Sucursal,
-        ISNULL(c.Nombre, 'Cliente General') as Cliente, 
+        ISNULL(c.Nombre, 'Cliente General') as Cliente,
+        v.MovID,
         v.Mov,
         vd.Articulo,
         
@@ -273,7 +248,7 @@ GROUP BY
         AND v.Mov NOT LIKE '%Cotiza%'
         AND v.Mov NOT LIKE '%Carta Porte%'
 
-    GROUP BY v.FechaEmision, vd.Sucursal, c.Nombre, v.Mov, vd.Articulo";
+    GROUP BY v.FechaEmision, vd.Sucursal, c.Nombre, v.MovID, v.Mov, vd.Articulo";
 
             var parametros = new Dictionary<string, object>
     {
@@ -287,11 +262,9 @@ GROUP BY
                 FechaEmision = Convert.ToDateTime(lector["FechaEmision"]),
                 Sucursal = lector["Sucursal"].ToString(),
                 Cliente = lector["Cliente"].ToString(),
+                MovID = lector["MovID"].ToString(),
                 Mov = lector["Mov"].ToString(),
                 Articulo = lector["Articulo"].ToString(),
-
-                // ¡AQUÍ ESTÁ EL ARREGLO DEL $0!
-                // Asignamos lo que calculó SQL directamente a TotalVenta
                 TotalVenta = Convert.ToDecimal(lector["ImporteNeto"])
             });
         }
@@ -319,11 +292,11 @@ GROUP BY
 
             return await _sqlHelper.QueryAsync(query, parametros, lector => new VentaReporteModel
             {
-                Mov = lector["Mes"].ToString(), // Guardamos el mes aquí
+                Mov = lector["Mes"].ToString(),
                 Cantidad = 1,
                 PrecioUnitario = Convert.ToDecimal(lector["TotalMensual"]),
                 Descuento = 0,
-                FechaEmision = new DateTime(anio, 1, 1) // Fecha dummy
+                FechaEmision = new DateTime(anio, 1, 1)
             });
         }
 
@@ -332,12 +305,9 @@ GROUP BY
         public async Task<List<GraficoPuntoModel>> ObtenerTendenciaGrafica(int sucursalId, DateTime inicio, DateTime fin, bool agruparPorMes)
         {
             string filtroSucursal = sucursalId > 0 ? "AND vd.Sucursal = @Sucursal" : "";
-
-            // Si es anual, agrupamos por MONTH, si no, por DAY
             string agrupador = agruparPorMes ? "MONTH(v.FechaEmision)" : "DAY(v.FechaEmision)";
             string seleccion = agruparPorMes ? "MONTH(v.FechaEmision)" : "DAY(v.FechaEmision)";
 
-            // Reutilizamos TU lógica de negativos (Devoluciones/Bonificaciones)
             string query = $@"
     SELECT 
         {seleccion} as IndiceTiempo,

@@ -1,7 +1,9 @@
 ﻿using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
+
 using SkiaSharp;
+
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -9,6 +11,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Data;
 
 using WPF_PAR.Core;
@@ -26,38 +29,20 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly ChartService _chartService;
         private readonly FamiliaLogicService _familiaLogic;
         private readonly IDialogService _dialogService;
-        private bool _isInitialized = false;
         private readonly INotificationService _notificationService;
         public FilterService Filters { get; }
 
+        private bool _isInitialized = false;
+
         // COLECCIONES
         private ObservableCollection<FamiliaResumenModel> _tarjetasFamilias;
-        public ObservableCollection<FamiliaResumenModel> TarjetasFamilias
-        {
-            get => _tarjetasFamilias;
-            set { _tarjetasFamilias = value; OnPropertyChanged(); }
-        }
+        public ObservableCollection<FamiliaResumenModel> TarjetasFamilias { get => _tarjetasFamilias; set { _tarjetasFamilias = value; OnPropertyChanged(); } }
 
         private ObservableCollection<FamiliaResumenModel> _tarjetasArquitectonica;
-        public ObservableCollection<FamiliaResumenModel> TarjetasArquitectonica
-        {
-            get => _tarjetasArquitectonica;
-            set { _tarjetasArquitectonica = value; OnPropertyChanged(); }
-        }
+        public ObservableCollection<FamiliaResumenModel> TarjetasArquitectonica { get => _tarjetasArquitectonica; set { _tarjetasArquitectonica = value; OnPropertyChanged(); } }
 
         private ObservableCollection<FamiliaResumenModel> _tarjetasEspecializada;
-        public ObservableCollection<FamiliaResumenModel> TarjetasEspecializada
-        {
-            get => _tarjetasEspecializada;
-            set { _tarjetasEspecializada = value; OnPropertyChanged(); }
-        }
-
-        private ObservableCollection<LineaResumenModel> _resumenLineas;
-        public ObservableCollection<LineaResumenModel> ResumenLineas
-        {
-            get => _resumenLineas;
-            set { _resumenLineas = value; OnPropertyChanged(); }
-        }
+        public ObservableCollection<FamiliaResumenModel> TarjetasEspecializada { get => _tarjetasEspecializada; set { _tarjetasEspecializada = value; OnPropertyChanged(); } }
 
         // Tabla Detallada
         private ObservableCollection<VentaReporteModel> _detalleVentas;
@@ -66,7 +51,6 @@ namespace WPF_PAR.MVVM.ViewModels
             get => _detalleVentas;
             set { _detalleVentas = value; OnPropertyChanged(); OnPropertyChanged(nameof(NoHayDatos)); }
         }
-        // Propiedad que devuelve TRUE si la lista es nula o tiene 0 elementos
         public bool NoHayDatos => DetalleVentas == null || DetalleVentas.Count == 0;
 
         // Títulos
@@ -78,27 +62,19 @@ namespace WPF_PAR.MVVM.ViewModels
 
         // Lista Desglose
         private ObservableCollection<SubLineaPerformanceModel> _listaDesglose;
-        public ObservableCollection<SubLineaPerformanceModel> ListaDesglose
-        {
-            get => _listaDesglose;
-            set { _listaDesglose = value; OnPropertyChanged(); }
-        }
+        public ObservableCollection<SubLineaPerformanceModel> ListaDesglose { get => _listaDesglose; set { _listaDesglose = value; OnPropertyChanged(); } }
 
         // GRAFICOS
-        private ISeries[] _seriesDetalle;
-        public ISeries[] SeriesDetalle { get => _seriesDetalle; set { _seriesDetalle = value; OnPropertyChanged(); } }
-
-        private ISeries[] _seriesTendencia;
-        public ISeries[] SeriesTendencia { get => _seriesTendencia; set { _seriesTendencia = value; OnPropertyChanged(); } }
-
-        private Axis[] _ejeXTendencia;
-        public Axis[] EjeXTendencia { get => _ejeXTendencia; set { _ejeXTendencia = value; OnPropertyChanged(); } }
-
-        private Axis[] _ejeYTendencia;
-        public Axis[] EjeYTendencia { get => _ejeYTendencia; set { _ejeYTendencia = value; OnPropertyChanged(); } }
+        public ISeries[] SeriesDetalle { get; set; }
+        public ISeries[] SeriesTendencia { get; set; }
+        public Axis[] EjeXTendencia { get; set; }
+        public Axis[] EjeYTendencia { get; set; }
 
         public ISeries[] SeriesComportamientoLineas { get; set; }
         public Axis[] EjeXMensual { get; set; }
+
+        // PROPIEDAD PARA LA LEYENDA (Dark Mode)
+        public SolidColorPaint LegendTextPaint { get; set; }
 
         // ESTADO
         private List<VentaReporteModel> _ventasProcesadas;
@@ -158,6 +134,7 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand OrdenarNombreCommand { get; set; }
         public RelayCommand ExportarGlobalCommand { get; set; }
 
+
         public FamiliaViewModel(
             IDialogService dialogService,
             BusinessLogicService businessLogic,
@@ -175,66 +152,99 @@ namespace WPF_PAR.MVVM.ViewModels
             _reportesService = new ReportesService();
             _catalogoService = new CatalogoService(businessLogic);
 
+            // Inicializar Colecciones
             TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>();
             TarjetasArquitectonica = new ObservableCollection<FamiliaResumenModel>();
             TarjetasEspecializada = new ObservableCollection<FamiliaResumenModel>();
             DetalleVentas = new ObservableCollection<VentaReporteModel>();
-            ResumenLineas = new ObservableCollection<LineaResumenModel>();
 
             _ventasProcesadas = new List<VentaReporteModel>();
             _datosAnualesCache = new List<VentaReporteModel>();
 
-            SeriesDetalle = new ISeries[0];
-            SeriesTendencia = new ISeries[0];
-            SeriesComportamientoLineas = new ISeries[0];
-            EjeXTendencia = new Axis[] { new Axis { IsVisible = false, LabelsPaint = new SolidColorPaint(SKColors.Black) } };
-            EjeYTendencia = new Axis[] { new Axis { IsVisible = true, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12 } };
-            EjeXMensual = new Axis[] { new Axis { LabelsPaint = new SolidColorPaint(SKColors.Gray) } };
+            // Configurar Colores Iniciales (Dark Mode)
+            ActualizarColoresGraficos();
 
+            // Configurar Comandos
             ActualizarCommand = new RelayCommand(o => EjecutarReporte());
             OrdenarVentaCommand = new RelayCommand(o => AplicarOrden("VENTA"));
             OrdenarNombreCommand = new RelayCommand(o => AplicarOrden("NOMBRE"));
             RegresarCommand = new RelayCommand(o => VerResumen = true);
-            ExportarExcelCommand = new RelayCommand(o => GenerarReporteExcel(false)); // False = Exportar Detalle actual
-
-            // NUEVO COMANDO: True = Exportar Todo
+            ExportarExcelCommand = new RelayCommand(o => GenerarReporteExcel(false));
             ExportarGlobalCommand = new RelayCommand(o => GenerarReporteExcel(true));
 
             VerDetalleCommand = new RelayCommand(param => { if ( param is string familia ) CargarDetalle(familia); });
             CambiarPeriodoGraficoCommand = new RelayCommand(param => { if ( param is string periodo ) GenerarDesglosePorPeriodo(periodo); });
+
             Filters.OnFiltrosCambiados += EjecutarReporte;
         }
+
+        private void ActualizarColoresGraficos()
+        {
+            bool isDark = false;
+            try { isDark = Properties.Settings.Default.IsDarkMode; } catch { }
+
+            var colorTexto = isDark ? SKColors.White : SKColors.Black;
+            var colorSeparador = isDark ? SKColors.White.WithAlpha(30) : SKColors.Gray.WithAlpha(50);
+
+            // Leyenda
+            LegendTextPaint = new SolidColorPaint(colorTexto);
+
+            // Ejes Tendencia
+            EjeXTendencia = new Axis[] { new Axis { IsVisible = false, LabelsPaint = new SolidColorPaint(colorTexto) } };
+            EjeYTendencia = new Axis[]
+            {
+                new Axis
+                {
+                    IsVisible = true,
+                    LabelsPaint = new SolidColorPaint(colorTexto),
+                    TextSize = 12,
+                    SeparatorsPaint = new SolidColorPaint(colorSeparador)
+                }
+            };
+
+            // Ejes Mensual
+            EjeXMensual = new Axis[]
+            {
+                new Axis
+                {
+                    LabelsPaint = new SolidColorPaint(colorTexto),
+                    SeparatorsPaint = null
+                }
+            };
+        }
+
         public void CargarDatosIniciales()
         {
-            // Si ya tiene datos, no recargamos (opcional, por si quieres caché)
             if ( _isInitialized ) return;
 
             IsLoading = true;
-
-            // Aquí sí va la lógica pesada
             CargarPorLinea("Todas");
             EjecutarReporte();
-
             _isInitialized = true;
         }
+
         public void CargarPorLinea(string linea)
         {
             _lineaActual = linea;
 
+            // Si ya tenemos datos procesados, solo filtramos visualmente
             if ( _ventasProcesadas != null && _ventasProcesadas.Any() )
             {
                 GenerarResumenVisual();
-                // Feedback sutil: "Mostrando datos de Arquitectónica"
                 _notificationService.ShowSuccess($"Visualizando línea: {linea.ToUpper()}");
             }
             else
             {
+                // Si no hay datos (o es la primera carga y falló), mostramos vacío
                 TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(_familiaLogic.ObtenerTarjetasVacias(_lineaActual));
-                // Aviso importante
-                _notificationService.ShowError($"No hay ventas registradas para la línea {linea} en este periodo.");
+
+                // Solo mostramos error si _isInitialized es true (significa que ya intentó cargar y no trajo nada)
+                if ( _isInitialized )
+                    _notificationService.ShowInfo($"No hay datos cargados para {linea}.");
             }
             VerResumen = true;
         }
+
         private async void EjecutarReporte()
         {
             IsLoading = true;
@@ -243,6 +253,7 @@ namespace WPF_PAR.MVVM.ViewModels
                 var ventasRaw = await _reportesService.ObtenerVentasBrutasRango(Filters.SucursalId, Filters.FechaInicio, Filters.FechaFin);
                 _ventasProcesadas = ventasRaw;
 
+                // Enriquecer datos con catálogo
                 foreach ( var venta in _ventasProcesadas )
                 {
                     var info = _catalogoService.ObtenerInfo(venta.Articulo);
@@ -252,9 +263,20 @@ namespace WPF_PAR.MVVM.ViewModels
                     venta.LitrosUnitarios = info.Litros;
                 }
 
+                // Filtrar ferretería
+                _ventasProcesadas = _ventasProcesadas
+                    .Where(x => x.Familia != "FERRETERIA" && !x.Linea.Contains("FERRETERIA", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
                 GenerarResumenVisual();
                 IsLoading = false;
 
+                if ( _ventasProcesadas.Count == 0 )
+                {
+                    _notificationService.ShowInfo("La consulta no devolvió resultados para este periodo.");
+                }
+
+                // Cargar caché anual en segundo plano
                 _datosAnualesCache = await _reportesService.ObtenerHistoricoAnualPorArticulo(
                     DateTime.Now.Year.ToString(), Filters.SucursalId.ToString());
 
@@ -265,33 +287,15 @@ namespace WPF_PAR.MVVM.ViewModels
                     item.Familia = info.FamiliaSimple;
                 }
 
-                // Filtrar ferretería si es necesario
-                _ventasProcesadas = ventasRaw
-                        .Where(x => x.Familia != "FERRETERIA" && !x.Linea.Contains("FERRETERIA", StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-                if ( _ventasProcesadas.Count == 0 )
-                {
-                    _notificationService.ShowError("La consulta no devolvió resultados para este periodo.");
-                }
-
                 if ( VerDetalle ) GenerarDesglosePorPeriodo("ANUAL");
-
-                var auditoria = ventasRaw
-                    .GroupBy(x => x.Mov)
-                    .Select(g => new
-    {
-        Tipo = g.Key,
-        Total = g.Sum(x => x.TotalVenta)
-    })
-    .ToList();
-
             }
             catch ( Exception ex )
             {
                 IsLoading = false;
-                await _notificationService.ShowErrorDialog($"Error crítico al cargar los datos:\n{ex.Message}");
+                await _notificationService.ShowErrorDialog($"Error al cargar datos:\n{ex.Message}");
             }
         }
+
         private void GenerarResumenVisual()
         {
             var (arqui, espe) = _familiaLogic.CalcularResumenGlobal(_ventasProcesadas);
@@ -308,16 +312,20 @@ namespace WPF_PAR.MVVM.ViewModels
 
             TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(resultado);
         }
+
         private void AplicarOrden(string criterio)
         {
-            // Aquí puedes reordenar TarjetasFamilias según el criterio
+            if ( TarjetasFamilias == null ) return;
             var lista = TarjetasFamilias.ToList();
             TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(_familiaLogic.OrdenarTarjetas(lista, criterio));
+            _notificationService.ShowSuccess($"Ordenado por {criterio.ToLower()}.");
         }
+
         private void CargarDetalle(string familia)
         {
             TituloDetalle = familia;
             _datosFamiliaActual = _ventasProcesadas.Where(x => x.Familia == familia).ToList();
+
             SubLineasDisponibles.Clear();
             SubLineasDisponibles.Add("TODAS");
 
@@ -328,6 +336,7 @@ namespace WPF_PAR.MVVM.ViewModels
             GenerarDesglosePorPeriodo("ANUAL");
             VerResumen = false;
         }
+
         private void ActualizarGraficosPorSubLinea()
         {
             if ( _datosFamiliaActual == null ) return;
@@ -337,18 +346,12 @@ namespace WPF_PAR.MVVM.ViewModels
             bool esVistaGlobal = ( filtro == "TODAS" || string.IsNullOrEmpty(filtro) );
             var datosFiltrados = esVistaGlobal ? datosBase.ToList() : datosBase.Where(x => ( x.Linea ?? "" ).Equals(filtro, StringComparison.OrdinalIgnoreCase)).ToList();
 
-            // 1. Tabla de Detalle (Siempre muestra el desglose de ventas)
             DetalleVentas = new ObservableCollection<VentaReporteModel>(datosFiltrados.OrderByDescending(x => x.TotalVenta));
 
-            // =========================================================
-            // 2. GRÁFICO DE BARRAS (Tendencia)
-            // =========================================================
+            // --- GRÁFICO DE BARRAS (Top 5) ---
             if ( esVistaGlobal )
             {
-                // VISTA GLOBAL: Mostramos Ranking de PRODUCTOS
                 TituloGraficoBarras = "Top 5 Productos Globales";
-
-                // Generamos gráfico directo con los productos filtrados
                 var resultadoTop = _chartService.GenerarTopProductos(datosFiltrados, VerPorLitros);
                 SeriesTendencia = resultadoTop.Series;
                 EjeXTendencia = resultadoTop.EjesX;
@@ -356,75 +359,56 @@ namespace WPF_PAR.MVVM.ViewModels
             }
             else
             {
-                // VISTA FILTRADA: Ranking de CLIENTES
                 TituloGraficoBarras = "Top 5 Clientes en " + filtro;
-
                 var topClientes = datosFiltrados
                     .GroupBy(x => x.Cliente)
                     .Select(g => new VentaReporteModel
                     {
                         Descripcion = Truncar(g.Key, 20),
-
-                        // --- CORRECCIÓN AQUÍ ---
-                        // El error era que asignábamos la suma a 'PrecioUnitario' esperando que calculara solo.
-                        // Como ahora TotalVenta es independiente, debemos asignarlo directo.
                         TotalVenta = g.Sum(x => x.TotalVenta),
-
-                        // Los litros sí funcionaban porque asignabas LitrosUnitarios
                         LitrosUnitarios = g.Sum(x => x.LitrosTotales),
-
-                        // Valores dummy para que no truenen otros cálculos
                         Cantidad = 1,
-                        PrecioUnitario = 0
+                        PrecioUnitario = 0 // Dummy data
                     })
                     .ToList();
 
                 var resultadoTop = _chartService.GenerarTopProductos(topClientes, VerPorLitros);
-                // ... resto del código igual
                 SeriesTendencia = resultadoTop.Series;
                 EjeXTendencia = resultadoTop.EjesX;
                 EjeYTendencia = resultadoTop.EjesY;
             }
 
-            // =========================================================
-            // 3. GRÁFICO DE PASTEL (Distribución)
-            // =========================================================
-            // Función local para cortar nombres largos
-            string Truncar(string texto, int max) =>
-                texto.Length > max ? texto.Substring(0, max - 3) + "..." : texto;
+            // --- GRÁFICO DE PASTEL ---
+            string Truncar(string t, int m) => t.Length > m ? t.Substring(0, m - 3) + "..." : t;
 
             if ( esVistaGlobal )
             {
                 TituloGraficoPastel = "Distribución por Sub-Línea";
-                var gruposLinea = datosFiltrados.GroupBy(x => x.Linea)
-                    .Select(g => new LineaResumenModel
-                    {
-                        NombreLinea = g.Key, // Cortamos nombre a 15 letras
-                        VentaTotal = g.Sum(x => x.TotalVenta)
-                    })
-                    .OrderByDescending(x => x.VentaTotal)
-                    .Take(5)
-                    .ToList();
-                SeriesDetalle = _chartService.GenerarPieChart(gruposLinea);
+                var grupos = datosFiltrados.GroupBy(x => x.Linea)
+                    .Select(g => new LineaResumenModel { NombreLinea = g.Key, VentaTotal = g.Sum(x => x.TotalVenta) })
+                    .OrderByDescending(x => x.VentaTotal).Take(5).ToList();
+                SeriesDetalle = _chartService.GenerarPieChart(grupos);
             }
             else
             {
                 TituloGraficoPastel = "Share de Productos";
-                var gruposProductos = datosFiltrados.GroupBy(x => x.Descripcion)
-                    .Select(g => new LineaResumenModel
-                    {
-                        NombreLinea = g.Key, // Cortamos nombre a 15 letras
-                        VentaTotal = g.Sum(x => x.TotalVenta)
-                    })
-                    .OrderByDescending(x => x.VentaTotal)
-                    .Take(5)
-                    .ToList();
-                SeriesDetalle = _chartService.GenerarPieChart(gruposProductos);
+                var grupos = datosFiltrados.GroupBy(x => x.Descripcion)
+                    .Select(g => new LineaResumenModel { NombreLinea = g.Key, VentaTotal = g.Sum(x => x.TotalVenta) })
+                    .OrderByDescending(x => x.VentaTotal).Take(5).ToList();
+                SeriesDetalle = _chartService.GenerarPieChart(grupos);
             }
+
+            // Notificar cambios a la vista
+            OnPropertyChanged(nameof(SeriesTendencia));
+            OnPropertyChanged(nameof(EjeXTendencia));
+            OnPropertyChanged(nameof(EjeYTendencia));
+            OnPropertyChanged(nameof(SeriesDetalle));
         }
+
         private void GenerarDesglosePorPeriodo(string periodo)
         {
-            if ( _datosAnualesCache == null ) return;
+            if ( _datosAnualesCache == null || !_datosAnualesCache.Any() ) return;
+
             var datosFamiliaAnuales = _datosAnualesCache.Where(x => x.Familia == TituloDetalle).ToList();
 
             var resultadoGrafico = _chartService.GenerarTendenciaLineas(datosFamiliaAnuales, periodo);
@@ -434,70 +418,55 @@ namespace WPF_PAR.MVVM.ViewModels
             OnPropertyChanged(nameof(EjeXMensual));
 
             string modoCalculo = periodo == "ANUAL" ? "TRIMESTRAL" : periodo;
-            // Aquí usamos el nuevo servicio unificado. Si FamiliaLogicService espera VentaReporteModel, todo OK.
             var listaNueva = _familiaLogic.CalcularDesgloseClientes(datosFamiliaAnuales, modoCalculo);
             ListaDesglose = new ObservableCollection<SubLineaPerformanceModel>(listaNueva);
         }
-        // Cambia la firma de tu método actual 'GenerarReporteExcel' para aceptar un booleano
-        private async void GenerarReporteExcel(bool esGlobal = false)
+
+        private async void GenerarReporteExcel(bool esGlobal)
         {
-            // DEFINIMOS QUÉ DATOS VAMOS A USAR
-            List<VentaReporteModel> datosAExportar;
-            string nombreBase;
-
-            if ( esGlobal )
+            var datos = esGlobal ? _ventasProcesadas : DetalleVentas?.ToList();
+            if ( datos == null || datos.Count == 0 )
             {
-                // CASO 1: EXPORTAR TODO (Botón Principal)
-                datosAExportar = _ventasProcesadas;
-                nombreBase = $"Reporte_GLOBAL_Suc{Filters.SucursalId}_{DateTime.Now:yyyyMMdd}";
-            }
-            else
-            {
-                // CASO 2: EXPORTAR DETALLE (Botón dentro de la familia)
-                datosAExportar = DetalleVentas?.ToList();
-                nombreBase = $"Reporte_{TituloDetalle?.Replace(" ", "")}_{DateTime.Now:yyyyMMdd}";
-            }
-
-            // VALIDACIÓN
-            if ( datosAExportar == null || datosAExportar.Count == 0 )
-            {
-                await _notificationService.ShowErrorDialog("No hay datos para exportar en la selección actual.");
+                await _notificationService.ShowErrorDialog("No hay datos para exportar.");
                 return;
             }
 
-            // EL RESTO ES IGUAL (Guardar archivo...)
-            string ruta = _dialogService.ShowSaveFileDialog("Archivo CSV (*.csv)|*.csv", nombreBase + ".csv");
+            string nombre = esGlobal ? $"Reporte_GLOBAL_{DateTime.Now:yyyyMMdd}" : $"Reporte_{TituloDetalle}_{DateTime.Now:yyyyMMdd}";
+            string ruta = _dialogService.ShowSaveFileDialog("CSV|*.csv", nombre + ".csv");
 
             if ( !string.IsNullOrEmpty(ruta) )
             {
                 IsLoading = true;
                 try
                 {
-                    await Task.Run(() =>
-                    {
-                        // Reutilizamos tu lógica existente que ya incluye Mov y Folio
-                        string contenido = _familiaLogic.GenerarContenidoCSV(datosAExportar);
-                        File.WriteAllText(ruta, contenido, Encoding.UTF8);
-                    });
-
-                    _notificationService.ShowSuccess($"Reporte {( esGlobal ? "GLOBAL" : "" )} guardado exitosamente.");
+                    await Task.Run(() => File.WriteAllText(ruta, _familiaLogic.GenerarContenidoCSV(datos), Encoding.UTF8));
+                    _notificationService.ShowSuccess("Archivo guardado exitosamente.");
                 }
                 catch ( Exception ex )
                 {
-                    await _notificationService.ShowErrorDialog($"Error al exportar:\n{ex.Message}");
+                    await _notificationService.ShowErrorDialog($"Error al guardar: {ex.Message}");
                 }
-                finally
-                {
-                    IsLoading = false;
-                }
+                finally { IsLoading = false; }
             }
         }
+
         private void FiltrarTabla()
         {
             if ( DetalleVentas == null ) return;
-            ICollectionView view = CollectionViewSource.GetDefaultView(DetalleVentas);
+            var view = CollectionViewSource.GetDefaultView(DetalleVentas);
             if ( string.IsNullOrWhiteSpace(TextoBusqueda) ) view.Filter = null;
-            else view.Filter = (obj) => { var v = obj as VentaReporteModel; if ( v == null ) return false; string t = TextoBusqueda.ToUpper(); return ( v.Cliente?.ToUpper().Contains(t) ?? false ) || ( v.Descripcion?.ToUpper().Contains(t) ?? false ) || ( v.Linea?.ToUpper().Contains(t) ?? false ); };
+            else
+            {
+                string t = TextoBusqueda.ToUpper();
+                view.Filter = o =>
+                {
+                    if ( o is VentaReporteModel v )
+                        return ( v.Cliente?.ToUpper().Contains(t) ?? false ) ||
+                               ( v.Descripcion?.ToUpper().Contains(t) ?? false ) ||
+                               ( v.Linea?.ToUpper().Contains(t) ?? false );
+                    return false;
+                };
+            }
         }
     }
 }
