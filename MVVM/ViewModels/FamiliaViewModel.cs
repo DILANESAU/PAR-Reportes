@@ -64,13 +64,11 @@ namespace WPF_PAR.MVVM.ViewModels
         private ObservableCollection<SubLineaPerformanceModel> _listaDesglose;
         public ObservableCollection<SubLineaPerformanceModel> ListaDesglose { get => _listaDesglose; set { _listaDesglose = value; OnPropertyChanged(); } }
 
-        // --- GRAFICOS (Nombres actualizados para coincidir con el nuevo XAML) ---
-        public ISeries[] SeriesPastelDinero { get; set; } // Antes SeriesDetalle
-        public ISeries[] SeriesPastelLitros { get; set; } // Nuevo
-
-        public ISeries[] SeriesBarrasTop { get; set; }    // Antes SeriesTendencia
-        public Axis[] EjeXBarras { get; set; }            // Antes EjeXTendencia
-        public Axis[] EjeYBarras { get; set; }            // Antes EjeYTendencia
+        // GRAFICOS
+        public ISeries[] SeriesDetalle { get; set; }
+        public ISeries[] SeriesTendencia { get; set; }
+        public Axis[] EjeXTendencia { get; set; }
+        public Axis[] EjeYTendencia { get; set; }
 
         public ISeries[] SeriesComportamientoLineas { get; set; }
         public Axis[] EjeXMensual { get; set; }
@@ -125,12 +123,7 @@ namespace WPF_PAR.MVVM.ViewModels
             get => _subLineaSeleccionada;
             set { _subLineaSeleccionada = value; OnPropertyChanged(); if ( !string.IsNullOrEmpty(value) ) ActualizarGraficosPorSubLinea(); }
         }
-        private ObservableCollection<KeyValuePair<int, string>> _listaSucursales;
-        public ObservableCollection<KeyValuePair<int, string>> ListaSucursales
-        {
-            get => _listaSucursales;
-            set { _listaSucursales = value; OnPropertyChanged(); }
-        }
+
         // COMANDOS
         public RelayCommand ActualizarCommand { get; set; }
         public RelayCommand VerDetalleCommand { get; set; }
@@ -196,9 +189,9 @@ namespace WPF_PAR.MVVM.ViewModels
             // Leyenda
             LegendTextPaint = new SolidColorPaint(colorTexto);
 
-            // Ejes Barras Top (Antes Tendencia)
-            EjeXBarras = new Axis[] { new Axis { IsVisible = false, LabelsPaint = new SolidColorPaint(colorTexto) } };
-            EjeYBarras = new Axis[]
+            // Ejes Tendencia
+            EjeXTendencia = new Axis[] { new Axis { IsVisible = false, LabelsPaint = new SolidColorPaint(colorTexto) } };
+            EjeYTendencia = new Axis[]
             {
                 new Axis
                 {
@@ -242,9 +235,10 @@ namespace WPF_PAR.MVVM.ViewModels
             }
             else
             {
-                // Si no hay datos, mostramos vacío
+                // Si no hay datos (o es la primera carga y falló), mostramos vacío
                 TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(_familiaLogic.ObtenerTarjetasVacias(_lineaActual));
 
+                // Solo mostramos error si _isInitialized es true (significa que ya intentó cargar y no trajo nada)
                 if ( _isInitialized )
                     _notificationService.ShowInfo($"No hay datos cargados para {linea}.");
             }
@@ -346,149 +340,70 @@ namespace WPF_PAR.MVVM.ViewModels
         private void ActualizarGraficosPorSubLinea()
         {
             if ( _datosFamiliaActual == null ) return;
-
-            // Filtramos ferretería por si acaso
-            var datosBase = _datosFamiliaActual
-                .Where(x => !x.Linea.Contains("FERRETERIA", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            var datosBase = _datosFamiliaActual.Where(x => !x.Linea.Contains("FERRETERIA", StringComparison.OrdinalIgnoreCase)).ToList();
 
             string filtro = SubLineaSeleccionada;
             bool esVistaGlobal = ( filtro == "TODAS" || string.IsNullOrEmpty(filtro) );
+            var datosFiltrados = esVistaGlobal ? datosBase.ToList() : datosBase.Where(x => ( x.Linea ?? "" ).Equals(filtro, StringComparison.OrdinalIgnoreCase)).ToList();
 
-            var datosFiltrados = esVistaGlobal
-                ? datosBase.ToList()
-                : datosBase.Where(x => ( x.Linea ?? "" ).Equals(filtro, StringComparison.OrdinalIgnoreCase)).ToList();
+            DetalleVentas = new ObservableCollection<VentaReporteModel>(datosFiltrados.OrderByDescending(x => x.TotalVenta));
 
-            // Actualizar tabla inferior
-            DetalleVentas = new ObservableCollection<VentaReporteModel>(
-                datosFiltrados.OrderByDescending(x => x.TotalVenta));
-
-            // =========================================================
-            // 1. TÍTULOS DE LAS GRÁFICAS
-            // =========================================================
+            // --- GRÁFICO DE BARRAS (Top 5) ---
             if ( esVistaGlobal )
             {
-                TituloGraficoPastel = "Distribución por Línea ($)"; // Título Dinero
-                TituloGraficoBarras = "Top 5 Productos Globales";   // Título Barras
-            }
-            else
-            {
-                TituloGraficoPastel = "Distribución por Producto ($)";
-                TituloGraficoBarras = "Top 5 Clientes en " + filtro;
-            }
-
-            // =========================================================
-            // 2. PREPARACIÓN DE DATOS (DINERO VS LITROS)
-            // =========================================================
-
-            // Definimos una estructura común para procesar ambas gráficas igual
-            var resumenDatos = new List<(string Nombre, decimal Venta, double Litros)>();
-
-            if ( esVistaGlobal )
-            {
-                // VISTA GLOBAL: Agrupamos por LÍNEA (Ej. Vinilicas, Esmaltes)
-                resumenDatos = datosFiltrados
-                    .GroupBy(x => x.Linea)
-                    .Select(g => (
-                        Nombre: g.Key,
-                        Venta: g.Sum(x => x.TotalVenta),
-                        Litros: ( double ) g.Sum(x => x.LitrosTotales)
-                    ))
-                    .ToList();
-            }
-            else
-            {
-                // VISTA FILTRADA: Agrupamos por PRODUCTO (Ej. Ecopar 19L)
-                resumenDatos = datosFiltrados
-                    .GroupBy(x => x.Descripcion)
-                    .Select(g => (
-                        Nombre: g.Key,
-                        Venta: g.Sum(x => x.TotalVenta),
-                        Litros: ( double ) g.Sum(x => x.LitrosTotales)
-                    ))
-                    .ToList();
-            }
-
-            // =========================================================
-            // 3. CONSTRUCCIÓN DE SERIES (PASTELES)
-            // =========================================================
-
-            // --- PASTEL 1: DINERO ---
-            var topDinero = resumenDatos.OrderByDescending(x => x.Venta).Take(5).ToList();
-
-            SeriesPastelDinero = topDinero.Select(x => new PieSeries<double>
-            {
-                Values = new double[] { ( double ) x.Venta },
-                // AQUI aplicamos la normalización para quitar el "PIN-" de las líneas
-                Name = NormalizarNombreProducto(x.Nombre),
-                DataLabelsPaint = new SolidColorPaint(SKColors.Black),
-                DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer,
-                DataLabelsFormatter = p => $"{p.Model:C0}",
-                ToolTipLabelFormatter = p => $"{p.Context.Series.Name}: {p.Model:C0} ({p.StackedValue.Share:P1})"
-            }).ToArray();
-
-            // --- PASTEL 2: LITROS (Ahora sigue la misma lógica de agrupación) ---
-            var topLitros = resumenDatos.OrderByDescending(x => x.Litros).Take(5).ToList();
-
-            SeriesPastelLitros = topLitros.Select(x => new PieSeries<double>
-            {
-                Values = new double[] { x.Litros },
-                Name = NormalizarNombreProducto(x.Nombre), // También normalizamos aquí
-                DataLabelsPaint = new SolidColorPaint(SKColors.Black),
-                DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer,
-                DataLabelsFormatter = p => $"{p.Model:N0} L",
-                ToolTipLabelFormatter = p => $"{p.Context.Series.Name}: {p.Model:N0} L ({p.StackedValue.Share:P1})"
-            }).ToArray();
-
-
-            // =========================================================
-            // 4. GRÁFICA DE BARRAS (Inferior)
-            // =========================================================
-            if ( esVistaGlobal )
-            {
-                // Global: Top Productos
+                TituloGraficoBarras = "Top 5 Productos Globales";
                 var resultadoTop = _chartService.GenerarTopProductos(datosFiltrados, VerPorLitros);
-                SeriesBarrasTop = resultadoTop.Series;
-                EjeXBarras = resultadoTop.EjesX;
-                EjeYBarras = resultadoTop.EjesY;
+                SeriesTendencia = resultadoTop.Series;
+                EjeXTendencia = resultadoTop.EjesX;
+                EjeYTendencia = resultadoTop.EjesY;
             }
             else
             {
-                // Filtrado: Top Clientes (O Productos si prefieres, aquí dejé Clientes como tenías)
+                TituloGraficoBarras = "Top 5 Clientes en " + filtro;
                 var topClientes = datosFiltrados
                     .GroupBy(x => x.Cliente)
                     .Select(g => new VentaReporteModel
                     {
-                        Descripcion = Truncar(g.Key, 25), // Nombre del cliente truncado
+                        Descripcion = Truncar(g.Key, 20),
                         TotalVenta = g.Sum(x => x.TotalVenta),
                         LitrosUnitarios = g.Sum(x => x.LitrosTotales),
-                        // Propiedades dummy necesarias para el servicio
                         Cantidad = 1,
-                        PrecioUnitario = 0
+                        PrecioUnitario = 0 // Dummy data
                     })
                     .ToList();
 
                 var resultadoTop = _chartService.GenerarTopProductos(topClientes, VerPorLitros);
-                SeriesBarrasTop = resultadoTop.Series;
-                EjeXBarras = resultadoTop.EjesX;
-                EjeYBarras = resultadoTop.EjesY;
+                SeriesTendencia = resultadoTop.Series;
+                EjeXTendencia = resultadoTop.EjesX;
+                EjeYTendencia = resultadoTop.EjesY;
             }
 
-            // =========================================================
-            // NOTIFICAR CAMBIOS
-            // =========================================================
-            OnPropertyChanged(nameof(SeriesPastelDinero));
-            OnPropertyChanged(nameof(SeriesPastelLitros));
-            OnPropertyChanged(nameof(TituloGraficoPastel));
+            // --- GRÁFICO DE PASTEL ---
+            string Truncar(string t, int m) => t.Length > m ? t.Substring(0, m - 3) + "..." : t;
 
-            OnPropertyChanged(nameof(SeriesBarrasTop));
-            OnPropertyChanged(nameof(EjeXBarras));
-            OnPropertyChanged(nameof(EjeYBarras));
-            OnPropertyChanged(nameof(TituloGraficoBarras));
+            if ( esVistaGlobal )
+            {
+                TituloGraficoPastel = "Distribución por Sub-Línea";
+                var grupos = datosFiltrados.GroupBy(x => x.Linea)
+                    .Select(g => new LineaResumenModel { NombreLinea = g.Key, VentaTotal = g.Sum(x => x.TotalVenta) })
+                    .OrderByDescending(x => x.VentaTotal).Take(5).ToList();
+                SeriesDetalle = _chartService.GenerarPieChart(grupos);
+            }
+            else
+            {
+                TituloGraficoPastel = "Share de Productos";
+                var grupos = datosFiltrados.GroupBy(x => x.Descripcion)
+                    .Select(g => new LineaResumenModel { NombreLinea = g.Key, VentaTotal = g.Sum(x => x.TotalVenta) })
+                    .OrderByDescending(x => x.VentaTotal).Take(5).ToList();
+                SeriesDetalle = _chartService.GenerarPieChart(grupos);
+            }
+
+            // Notificar cambios a la vista
+            OnPropertyChanged(nameof(SeriesTendencia));
+            OnPropertyChanged(nameof(EjeXTendencia));
+            OnPropertyChanged(nameof(EjeYTendencia));
+            OnPropertyChanged(nameof(SeriesDetalle));
         }
-
-        // Helper para truncar nombres largos de clientes
-        private string Truncar(string t, int m) => t.Length > m ? t.Substring(0, m - 3) + "..." : t;
 
         private void GenerarDesglosePorPeriodo(string periodo)
         {
@@ -552,28 +467,6 @@ namespace WPF_PAR.MVVM.ViewModels
                     return false;
                 };
             }
-        }
-
-        // Método auxiliar para limpiar nombres
-        private string NormalizarNombreProducto(string nombreOriginal)
-        {
-            if ( string.IsNullOrEmpty(nombreOriginal) ) return "";
-
-            // 1. Quitar espacios extra y convertir a minúsculas para analizar
-            string limpio = nombreOriginal.Trim();
-
-            // 2. Regla: Si tiene guion (ej. "PIN-ECOPAR"), tomamos lo que está después del guion
-            if ( limpio.Contains("-") )
-            {
-                var partes = limpio.Split('-');
-                if ( partes.Length > 1 )
-                {
-                    limpio = partes[1]; // Tomas "ECOPAR"
-                }
-            }
-
-            // 3. Regla: Convertir a "Título" (Primera mayúscula, resto minúscula)
-            return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(limpio.ToLower());
         }
     }
 }
