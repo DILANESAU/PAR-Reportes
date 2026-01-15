@@ -121,10 +121,24 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
+                            <DataGridTextColumn Header="LITROS" 
+                        Binding="{Binding TotalLitros, StringFormat=N0}" 
+                        Width="Auto"
+                        FontWeight="SemiBold"
+                        HeaderStyle="{StaticResource HeaderRightAlign}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                        <Setter Property="Foreground" Value="Gray"/>
+                                        <Setter Property="Margin" Value="10,0"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                             <DataGridTextColumn Header="{Binding DataContext.TituloColumnaActual, Source={x:Reference proxy}}" 
-                                                Binding="{Binding TotalAnual, StringFormat=C0}" Width="*" FontWeight="Bold"
-                                                HeaderStyle="{StaticResource HeaderRightAlign}"
-                                                Visibility="{Binding DataContext.VerAnual, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
+                        Binding="{Binding TotalAnual, StringFormat=C0}" Width="*" FontWeight="Bold"
+                        HeaderStyle="{StaticResource HeaderRightAlign}"
+                        Visibility="{Binding DataContext.VerAnual, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -134,9 +148,9 @@
                             </DataGridTextColumn>
 
                             <DataGridTextColumn Header="{Binding DataContext.TituloColumnaAnterior, Source={x:Reference proxy}}" 
-                                                Binding="{Binding TotalAnualAnt, StringFormat=C0}" Width="*" 
-                                                HeaderStyle="{StaticResource HeaderRightAlign}"
-                                                Visibility="{Binding DataContext.VerAnual, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
+                        Binding="{Binding TotalAnualAntYTD, StringFormat=C0}" Width="*" 
+                        HeaderStyle="{StaticResource HeaderRightAlign}"
+                        Visibility="{Binding DataContext.VerAnual, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Opacity" Value="0.6"/>
@@ -146,7 +160,7 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="SEM 1" Binding="{Binding S1, StringFormat=C0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerSemestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
+                            <DataGridTextColumn Header="{Binding DataContext.TituloSem1, Source={x:Reference proxy}}" Binding="{Binding S1, StringFormat=C0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerSemestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -155,7 +169,7 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="SEM 2" Binding="{Binding S2, StringFormat=C0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerSemestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
+                            <DataGridTextColumn Header="{Binding DataContext.TituloSem2, Source={x:Reference proxy}}" Binding="{Binding S2, StringFormat=C0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerSemestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -165,7 +179,7 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="T1" Binding="{Binding T1, StringFormat=N0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerTrimestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
+                            <DataGridTextColumn Header="{Binding DataContext.TituloTri1, Source={x:Reference proxy}}" Binding="{Binding T1, StringFormat=N0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerTrimestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -173,7 +187,7 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="T2" Binding="{Binding T2, StringFormat=N0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerTrimestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
+                            <DataGridTextColumn Header="{Binding DataContext.TituloTri2, Source={x:Reference proxy}}" Binding="{Binding T2, StringFormat=N0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerTrimestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -181,7 +195,7 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="T3" Binding="{Binding T3, StringFormat=N0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerTrimestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
+                            <DataGridTextColumn Header="{Binding DataContext.TituloTri3, Source={x:Reference proxy}}" Binding="{Binding T3, StringFormat=N0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerTrimestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -189,7 +203,7 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="T4" Binding="{Binding T4, StringFormat=N0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerTrimestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
+                            <DataGridTextColumn Header="{Binding DataContext.TituloTri4, Source={x:Reference proxy}}" Binding="{Binding T4, StringFormat=N0}" Width="*" HeaderStyle="{StaticResource HeaderRightAlign}" Visibility="{Binding DataContext.VerTrimestral, Source={x:Reference proxy}, Converter={StaticResource BoolToVis}}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -235,13 +249,13 @@
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Background="#F1F8E9" CornerRadius="5" Padding="8" Margin="0,0,3,0">
                             <StackPanel>
-                                <TextBlock Text="Ticket Prom." FontSize="9" Opacity="0.6"/>
+                                <TextBlock Text="Factura Prom." FontSize="9" Opacity="0.6"/>
                                 <TextBlock Text="{Binding KpisCliente.TicketPromedio, StringFormat=C0}" FontWeight="Bold" Foreground="#2E7D32" FontSize="13"/>
                             </StackPanel>
                         </Border>
                         <Border Grid.Column="1" Background="#E3F2FD" CornerRadius="5" Padding="8" Margin="3,0,3,0">
                             <StackPanel>
-                                <TextBlock Text="Frecuencia" FontSize="9" Opacity="0.6"/>
+                                <TextBlock Text="Facturas totales" FontSize="9" Opacity="0.6"/>
                                 <TextBlock Text="{Binding KpisCliente.FrecuenciaCompra, StringFormat={}{0} visitas}" FontWeight="Bold" Foreground="#1565C0" FontSize="13"/>
                             </StackPanel>
                         </Border>
@@ -271,7 +285,7 @@
                         <materialDesign:Card Grid.Column="0" UniformCornerRadius="8" Padding="0">
                             <DockPanel>
                                 <Border DockPanel.Dock="Top" Background="#FFEBEE" Padding="5">
-                                    <TextBlock Text="▼ Declive" Foreground="#D32F2F" FontWeight="Bold" HorizontalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Text="▼ Declive Anual" Foreground="#D32F2F" FontWeight="Bold" HorizontalAlignment="Center" FontSize="11"/>
                                 </Border>
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <ItemsControl ItemsSource="{Binding ProductosEnDeclive}" Margin="5">
@@ -295,7 +309,7 @@
                         <materialDesign:Card Grid.Column="2" UniformCornerRadius="8" Padding="0">
                             <DockPanel>
                                 <Border DockPanel.Dock="Top" Background="#E8F5E9" Padding="5">
-                                    <TextBlock Text="▲ Aumento" Foreground="#388E3C" FontWeight="Bold" HorizontalAlignment="Center" FontSize="11"/>
+                                    <TextBlock Text="▲ Aumento Anual" Foreground="#388E3C" FontWeight="Bold" HorizontalAlignment="Center" FontSize="11"/>
                                 </Border>
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <ItemsControl ItemsSource="{Binding ProductosEnAumento}" Margin="5">

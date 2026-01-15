@@ -11,6 +11,13 @@ namespace WPF_PAR.MVVM.Models
         // Arrays de datos (0 = Enero, 11 = Diciembre)
         public decimal[] VentasMensualesActual { get; set; }
         public decimal[] VentasMensualesAnterior { get; set; }
+        public decimal TotalAnualAntYTD => VentasMensualesAnterior.Take(MesesParaCalculoTendencia).Sum();
+
+        // NUEVO: Array para guardar los litros de cada mes
+        public decimal[] LitrosMensualesActual { get; set; }
+
+        // NUEVO: Propiedad calculada para el total
+        public decimal TotalLitros => LitrosMensualesActual.Sum();
 
         // CONSTRUCTOR DE SEGURIDAD
         // Inicializa los arrays en ceros para evitar "NullReferenceException"
@@ -18,6 +25,7 @@ namespace WPF_PAR.MVVM.Models
         {
             VentasMensualesActual = new decimal[12];
             VentasMensualesAnterior = new decimal[12];
+            LitrosMensualesActual = new decimal[12];
         }
 
         // --- PROPIEDADES CALCULADAS (Lectura dinámica) ---
@@ -50,18 +58,25 @@ namespace WPF_PAR.MVVM.Models
         public decimal M10 => VentasMensualesActual[9]; // Oct
         public decimal M11 => VentasMensualesActual[10]; // Nov
         public decimal M12 => VentasMensualesActual[11]; // Dic
-
+        public int MesesParaCalculoTendencia { get; set; } = 12;
         // --- TENDENCIA INTELIGENTE ---
         public double VariacionPorcentual
         {
             get
             {
-                if ( TotalAnualAnt == 0 ) return 100; // Si el año pasado vendió 0, creció 100% (o infinito)
-                return ( double ) ( ( ( TotalAnual - TotalAnualAnt ) / TotalAnualAnt ) * 100 );
+                // 1. Calculamos la venta actual (siempre es lo que llevamos)
+                decimal actual = TotalAnual;
+
+                // 2. Calculamos la venta anterior PERO LIMITADA a los mismos meses que llevamos este año
+                // Ejemplo: Si estamos en Enero, solo suma Enero del año pasado.
+                decimal anteriorAjustado = VentasMensualesAnterior.Take(MesesParaCalculoTendencia).Sum();
+
+                if ( anteriorAjustado == 0 ) return 100; // Evitar división por cero
+
+                return ( double ) ( ( ( actual - anteriorAjustado ) / anteriorAjustado ) * 100 );
             }
         }
 
-        // 1 = Verde (Creció), -1 = Rojo (Bajó), 0 = Gris (Igual)
         public int EstadoTendencia => VariacionPorcentual >= 1 ? 1 : ( VariacionPorcentual <= -1 ? -1 : 0 );
     }
 }

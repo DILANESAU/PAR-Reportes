@@ -8,6 +8,7 @@ using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -49,7 +50,7 @@ namespace WPF_PAR.MVVM.ViewModels
         }
 
         // --- CONTROL DE VISTAS (TABLA PIVOTE) ---
-        public List<string> ModosVista { get; } = new List<string> { "Anual", "Semestral", "Trimestral" };
+        public ObservableCollection<string> ModosVista { get; set; } = new ObservableCollection<string>();
 
         private string _modoSeleccionado;
         public string ModoSeleccionado
@@ -62,8 +63,36 @@ namespace WPF_PAR.MVVM.ViewModels
                 CambiarVista(); // <--- ESTO ACTUALIZA TABLA Y GRÁFICA
             }
         }
-        public string TituloColumnaActual => $"TOTAL {AnioSeleccionado}";
-        public string TituloColumnaAnterior => $"TOTAL {AnioSeleccionado - 1}";
+        public string TituloColumnaActual
+        {
+            get
+            {
+                // Si el año seleccionado es el actual (ej. 2026)
+                if ( AnioSeleccionado == DateTime.Now.Year )
+                {
+                    // Obtenemos el nombre del mes actual (ej. "ENE", "FEB")
+                    string mesActual = DateTime.Now.ToString("MMM", CultureInfo.CurrentCulture).ToUpper().Replace(".", "");
+                    return $"ACUM. {mesActual} {AnioSeleccionado}"; // Ej: "ACUM. ENE 2026"
+                }
+
+                // Si es un año pasado, mostramos "TOTAL"
+                return $"TOTAL {AnioSeleccionado}";
+            }
+        }
+        public string TituloColumnaAnterior
+        {
+            get
+            {
+                // Si el año seleccionado es el actual, el comparativo también debe indicar que es acumulado
+                if ( AnioSeleccionado == DateTime.Now.Year )
+                {
+                    string mesActual = DateTime.Now.ToString("MMM", CultureInfo.CurrentCulture).ToUpper().Replace(".", "");
+                    return $"ACUM. {mesActual} {AnioSeleccionado - 1}"; // Ej: "ACUM. ENE 2025"
+                }
+
+                return $"TOTAL {AnioSeleccionado - 1}";
+            }
+        }
         public int AnioSeleccionado
         {
             get => _anioSeleccionado;
@@ -72,11 +101,64 @@ namespace WPF_PAR.MVVM.ViewModels
                 _anioSeleccionado = value;
                 OnPropertyChanged();
 
-                // AGREGAR ESTAS DOS LÍNEAS PARA ACTUALIZAR LOS TÍTULOS
+                // Notificar cambio en TODOS los títulos
                 OnPropertyChanged(nameof(TituloColumnaActual));
                 OnPropertyChanged(nameof(TituloColumnaAnterior));
+                OnPropertyChanged(nameof(TituloSem1));
+                OnPropertyChanged(nameof(TituloSem2));
+                OnPropertyChanged(nameof(TituloTri1));
+                OnPropertyChanged(nameof(TituloTri2));
+                OnPropertyChanged(nameof(TituloTri3));
+                OnPropertyChanged(nameof(TituloTri4));
 
+                ActualizarModosDisponibles(); // Tu lógica de bloqueo
                 if ( !_isLoading ) CargarDatosIniciales();
+            }
+        }
+
+        private void ActualizarModosDisponibles()
+        {
+            // Guardamos lo que estaba seleccionado para intentar mantenerlo
+            string seleccionPrevia = ModoSeleccionado;
+
+            ModosVista.Clear();
+            ModosVista.Add("Anual"); // Anual siempre disponible (muestra YTD)
+
+            bool esAnoActual = ( AnioSeleccionado == DateTime.Now.Year );
+            int mesActual = DateTime.Now.Month;
+
+            if ( !esAnoActual )
+            {
+                // Si es año pasado, mostramos todo
+                ModosVista.Add("Semestral");
+                ModosVista.Add("Trimestral");
+            }
+            else
+            {
+                // SI ES AÑO ACTUAL, APLICAMOS RESTRICCIONES
+
+                // Semestral: Solo si ya pasó Junio (Mes > 6)
+                // Opcional: Si quieres permitir ver el "Semestre en curso", cambia a >= 1
+                if ( mesActual > 6 )
+                {
+                    ModosVista.Add("Semestral");
+                }
+
+                // Trimestral: Solo si ya pasó Marzo (Mes > 3)
+                if ( mesActual > 3 )
+                {
+                    ModosVista.Add("Trimestral");
+                }
+            }
+
+            // Restaurar selección o forzar Anual si la opción desapareció
+            if ( ModosVista.Contains(seleccionPrevia) )
+            {
+                ModoSeleccionado = seleccionPrevia;
+            }
+            else
+            {
+                ModoSeleccionado = "Anual";
             }
         }
 
@@ -107,19 +189,24 @@ namespace WPF_PAR.MVVM.ViewModels
         public ObservableCollection<ProductoAnalisisModel> ProductosEnDeclive { get; set; } = new ObservableCollection<ProductoAnalisisModel>();
         public ObservableCollection<ProductoAnalisisModel> ProductosEnAumento { get; set; } = new ObservableCollection<ProductoAnalisisModel>();
 
+
         // --- GRÁFICA ---
         public ISeries[] SeriesGrafica { get; set; }
         public Axis[] EjeXGrafica { get; set; }
-        public Axis[] EjeYGrafica { get; set; } // Nuevo para el escalado
+        public Axis[] EjeYGrafica { get; set; }
+
+        public string TituloSem1 => $"SEM 1 {AnioSeleccionado}";
+        public string TituloSem2 => $"SEM 2 {AnioSeleccionado}";
+
+        public string TituloTri1 => $"TRI 1 {AnioSeleccionado}";
+        public string TituloTri2 => $"TRI 2 {AnioSeleccionado}";
+        public string TituloTri3 => $"TRI 3 {AnioSeleccionado}";
+        public string TituloTri4 => $"TRI 4 {AnioSeleccionado}";
 
         private bool _isLoading;
         public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
 
         public RelayCommand ActualizarCommand { get; set; }
-
-        // =========================================================
-        // CONSTRUCTOR
-        // =========================================================
         public ClientesViewModel(
             ClientesService clientesService,
             ChartService chartService,
@@ -133,36 +220,27 @@ namespace WPF_PAR.MVVM.ViewModels
 
             ListaClientes = new ObservableCollection<ClienteAnalisisModel>();
 
-            // Configurar Años
             int actual = DateTime.Now.Year;
             AñosDisponibles = new List<int> { actual, actual - 1, actual - 2 };
-            _anioSeleccionado = actual; // Ojo: Asegúrate que sea un año con datos (ej. 2025)
-
-            // Configurar Modo Inicial
-            _modoSeleccionado = "Semestral";
+            _anioSeleccionado = actual;
+            ActualizarModosDisponibles();
+            _modoSeleccionado = "Anual";
 
             ActualizarCommand = new RelayCommand(o => CargarDatosIniciales());
             Filters.OnFiltrosCambiados += CargarDatosIniciales;
         }
-
-        // =========================================================
-        // CARGA DE DATOS MAESTROS
-        // =========================================================
         public async void CargarDatosIniciales()
         {
             IsLoading = true;
             try
             {
-                // 1. Traemos TODOS los datos mensuales de una vez
                 var datos = await _clientesService.ObtenerDatosBase(AnioSeleccionado, Filters.SucursalId);
 
                 _todosLosDatos = datos;
                 ListaClientes = new ObservableCollection<ClienteAnalisisModel>(datos);
 
-                // 2. Aplicamos la vista actual (Configura columnas)
                 CambiarVista();
 
-                // Limpiamos selección
                 ClienteSeleccionado = null;
                 SeriesGrafica = null;
             }
@@ -176,12 +254,8 @@ namespace WPF_PAR.MVVM.ViewModels
             }
         }
 
-        // =========================================================
-        // LÓGICA DE VISTA PIVOTE (TABLA + GRÁFICA)
-        // =========================================================
         private void CambiarVista()
         {
-            // A. CONFIGURAR COLUMNAS TABLA
             VerAnual = false; VerSemestral = false; VerTrimestral = false;
 
             switch ( ModoSeleccionado )
@@ -191,16 +265,11 @@ namespace WPF_PAR.MVVM.ViewModels
                 case "Trimestral": VerTrimestral = true; break;
             }
 
-            // B. ACTUALIZAR GRÁFICA (Si hay un cliente seleccionado)
             if ( ClienteSeleccionado != null )
             {
                 ActualizarGraficaLateral();
             }
         }
-
-        // =========================================================
-        // CARGA DE DETALLES (AL SELECCIONAR CLIENTE)
-        // =========================================================
         private async void CargarDetalleCliente()
         {
             if ( ClienteSeleccionado == null ) return;
@@ -208,14 +277,11 @@ namespace WPF_PAR.MVVM.ViewModels
 
             try
             {
-                // 1. Gráfica (Sincronizada con el modo de vista)
                 ActualizarGraficaLateral();
 
-                // 2. KPIs
                 KpisCliente = await _clientesService.ObtenerKpisCliente(
                     ClienteSeleccionado.Cliente, AnioSeleccionado, Filters.SucursalId);
 
-                // 3. Productos Top (Subidas y Bajadas)
                 var productos = await _clientesService.ObtenerVariacionProductos(
                     ClienteSeleccionado.Cliente, AnioSeleccionado, Filters.SucursalId);
 
@@ -237,10 +303,6 @@ namespace WPF_PAR.MVVM.ViewModels
                 IsLoading = false;
             }
         }
-
-        // =========================================================
-        // GENERACIÓN DE GRÁFICA EN MEMORIA (SIN SQL)
-        // =========================================================
         private void ActualizarGraficaLateral()
         {
             if ( ClienteSeleccionado == null ) return;
@@ -249,36 +311,38 @@ namespace WPF_PAR.MVVM.ViewModels
             string[] etiquetas = null;
             var c = ClienteSeleccionado;
 
-            // AQUÍ ESTÁ EL CAMBIO: SIEMPRE DESGLOSAMOS POR MESES
-            // Para que la gráfica tenga "forma" y no sea un punto.
+            // LÓGICA CORREGIDA: Agrupamos los datos según el modo de vista
             switch ( ModoSeleccionado )
             {
                 case "Anual":
-                    // En lugar del total, mostramos los 12 meses
+                    // Muestra el detalle de los 12 meses (Curva suave)
                     valores.AddRange(c.VentasMensualesActual);
-                    etiquetas = new[] { "E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D" };
+                    etiquetas = new[] { "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC" };
                     break;
 
                 case "Semestral":
-                    // Mostramos los 6 meses del semestre correspondiente (no la suma S1/S2)
-                    // Si quieres ser muy preciso, necesitarías saber cuál semestre se eligió.
-                    // Como tu tabla muestra S1 y S2, aquí podríamos mostrar los 12 meses para ver el año completo
-                    // O mostrar solo Ene-Jun y Jul-Dic como dos puntos si prefieres la simplicidad anterior.
+                    // Sumamos los meses para crear 2 puntos grandes (S1 y S2)
+                    var s1 = c.VentasMensualesActual.Take(6).Sum();
+                    var s2 = c.VentasMensualesActual.Skip(6).Take(6).Sum();
 
-                    // MI RECOMENDACIÓN: Muestra siempre el año completo (12 meses) en la gráfica
-                    // para dar contexto, incluso si miras semestres.
-                    valores.AddRange(c.VentasMensualesActual);
-                    etiquetas = new[] { "E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D" };
+                    valores.Add(s1);
+                    valores.Add(s2);
+                    etiquetas = new[] { "SEM 1", "SEM 2" };
                     break;
 
                 case "Trimestral":
-                    // Igual, ver la tendencia de los 12 meses ayuda más.
-                    valores.AddRange(c.VentasMensualesActual);
-                    etiquetas = new[] { "E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D" };
+                    // Sumamos bloques de 3 meses para crear 4 puntos (T1, T2, T3, T4)
+                    var t1 = c.VentasMensualesActual.Take(3).Sum();
+                    var t2 = c.VentasMensualesActual.Skip(3).Take(3).Sum();
+                    var t3 = c.VentasMensualesActual.Skip(6).Take(3).Sum();
+                    var t4 = c.VentasMensualesActual.Skip(9).Take(3).Sum();
+
+                    valores.Add(t1); valores.Add(t2); valores.Add(t3); valores.Add(t4);
+                    etiquetas = new[] { "TRI 1", "TRI 2", "TRI 3", "TRI 4" };
                     break;
             }
 
-            // Configuración de escala Y (Igual que antes)
+            // --- Configuración Visual (Escala y Estilo) ---
             decimal maxVal = valores.Any() ? valores.Max() : 0;
             double techo = ( double ) ( maxVal * 1.15m );
 
@@ -287,10 +351,10 @@ namespace WPF_PAR.MVVM.ViewModels
         new Axis
         {
             MinLimit = 0,
-            MaxLimit = techo > 0 ? techo : 1, // Evitar división por cero
+            MaxLimit = techo > 0 ? techo : 1,
             Labeler = v => v >= 1000000 ? $"{v/1000000:N1}M" : $"{v/1000:N0}K",
             TextSize = 10,
-            ShowSeparatorLines = true // Rejilla suave ayuda a leer
+            ShowSeparatorLines = true
         }
             };
 
@@ -299,33 +363,30 @@ namespace WPF_PAR.MVVM.ViewModels
         new LineSeries<decimal>
         {
             Values = valores,
-            // DISEÑO VISUAL MEJORADO
-            Fill = new SolidColorPaint(SKColors.DodgerBlue.WithAlpha(30)), // Relleno azul transparente abajo
-            Stroke = new SolidColorPaint(SKColors.DodgerBlue) { StrokeThickness = 4 }, // Línea más gruesa
-            GeometrySize = 8, // Puntos más discretos
-            GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 2 },
-            LineSmoothness = 1, // <--- ESTO HACE LA LÍNEA CURVA (BEZIER) Y SE VE MUY MODERNO
+            Fill = new SolidColorPaint(SKColors.DodgerBlue.WithAlpha(30)),
+            Stroke = new SolidColorPaint(SKColors.DodgerBlue) { StrokeThickness = 4 },
+            GeometrySize = 10, // Puntos un poco más grandes para que se noten en Sem/Tri
+            GeometryStroke = new SolidColorPaint(SKColors.White) { StrokeThickness = 3 },
             
+            // OJO: LineSmoothness en 0 para Trimestral/Semestral se ve mejor (líneas rectas)
+            // para que se note el cambio brusco entre periodos.
+            LineSmoothness = ModoSeleccionado == "Anual" ? 1 : 0,
+
             DataLabelsPaint = new SolidColorPaint(SKColors.Black),
             DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Top,
-            // Solo mostramos etiquetas si el valor no es 0 para no ensuciar
             DataLabelsFormatter = p => p.Model > 0 ? (p.Model >= 1000000 ? $"{p.Model/1000000:N1}M" : $"{p.Model/1000:N0}K") : ""
         }
             };
 
             EjeXGrafica = new Axis[]
             {
-        new Axis { Labels = etiquetas, LabelsRotation = 0, TextSize = 10 }
+        new Axis { Labels = etiquetas, LabelsRotation = 0, TextSize = 11 }
             };
 
             OnPropertyChanged(nameof(SeriesGrafica));
             OnPropertyChanged(nameof(EjeXGrafica));
             OnPropertyChanged(nameof(EjeYGrafica));
         }
-
-        // =========================================================
-        // FILTRO VISUAL (BUSCADOR)
-        // =========================================================
         private void AplicarFiltroVisual()
         {
             if ( _todosLosDatos == null ) return;

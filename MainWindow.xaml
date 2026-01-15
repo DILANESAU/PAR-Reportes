@@ -11,6 +11,8 @@
         mc:Ignorable="d"
         Title="Sistema Principal - PAR Reportes" Height="768" Width="1280"
         WindowStartupLocation="CenterScreen"
+        RenderOptions.BitmapScalingMode="LowQuality" 
+        TextOptions.TextFormattingMode="Display"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
         TextElement.FontSize="13"
@@ -33,23 +35,18 @@
 
         <DataTemplate DataType="{x:Type models:NotificationAlert}">
             <materialDesign:Card MinWidth="350" MaxWidth="500" MinHeight="65"
-                         UniformCornerRadius="8" Padding="0" Margin="0" 
-                         materialDesign:ElevationAssist.Elevation="Dp6"
-                         TextElement.Foreground="{DynamicResource MaterialDesignBody}">
-
+                                 UniformCornerRadius="8" Padding="0" Margin="0" 
+                                 materialDesign:ElevationAssist.Elevation="Dp6"
+                                 TextElement.Foreground="{DynamicResource MaterialDesignBody}">
                 <materialDesign:Card.RenderTransform>
                     <TranslateTransform Y="-20"/>
                 </materialDesign:Card.RenderTransform>
-
                 <materialDesign:Card.Triggers>
                     <EventTrigger RoutedEvent="Loaded">
                         <BeginStoryboard>
                             <Storyboard>
-                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.Opacity)"
-                                         From="0" To="1" Duration="0:0:0.3"/>
-
-                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                                         From="-20" To="0" Duration="0:0:0.3">
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.Opacity)" From="0" To="1" Duration="0:0:0.3"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="-20" To="0" Duration="0:0:0.3">
                                     <DoubleAnimation.EasingFunction>
                                         <CubicEase EasingMode="EaseOut"/>
                                     </DoubleAnimation.EasingFunction>
@@ -58,25 +55,20 @@
                         </BeginStoryboard>
                     </EventTrigger>
                 </materialDesign:Card.Triggers>
-
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="60"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-
                     <Border x:Name="IconBorder" Background="#4CAF50" CornerRadius="8,0,0,8" VerticalAlignment="Stretch">
-                        <materialDesign:PackIcon x:Name="AlertIcon" Kind="CheckCircle" Width="28" Height="28" Foreground="White" 
-                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <materialDesign:PackIcon x:Name="AlertIcon" Kind="CheckCircle" Width="28" Height="28" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-
                     <StackPanel Grid.Column="1" Margin="15,10" VerticalAlignment="Center">
                         <TextBlock x:Name="TitleText" Text="{Binding Title}" FontWeight="Bold" FontSize="15" Margin="0,0,0,3"/>
                         <TextBlock Text="{Binding Message}" FontSize="13" Opacity="0.8" TextWrapping="Wrap" LineHeight="18"/>
                     </StackPanel>
                 </Grid>
             </materialDesign:Card>
-
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Type}" Value="Error">
                     <Setter TargetName="IconBorder" Property="Background" Value="#E53935"/>
@@ -124,7 +116,9 @@
 
     <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsMenuOpen, Mode=TwoWay}">
         <materialDesign:DrawerHost.LeftDrawerContent>
-            <Grid Width="280" Background="{DynamicResource MaterialDesignPaper}">
+
+            <Grid Width="280" Background="{DynamicResource MaterialDesignPaper}" CacheMode="BitmapCache">
+
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -217,7 +211,7 @@
                         </StackPanel>
                     </Button>
 
-                    <TextBlock Text="v1.0.2 PAR Reportes" HorizontalAlignment="Center" FontSize="10"
+                    <TextBlock Text="v1.0.2 PAR Intelligence" HorizontalAlignment="Center" FontSize="10"
                                Foreground="{DynamicResource MaterialDesignBody}" Opacity="0.3" Margin="0,10,0,0"/>
                 </StackPanel>
             </Grid>
@@ -241,7 +235,7 @@
                                   Foreground="{DynamicResource MaterialDesignBody}"/>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="20,0,0,0">
-                        <TextBlock Text="PAR REPORTES" FontSize="18" FontWeight="Black" 
+                        <TextBlock Text="PAR INTELLIGENCE" FontSize="18" FontWeight="Black" 
                                    Foreground="{DynamicResource MaterialDesignBody}" />
                     </StackPanel>
 
@@ -261,28 +255,25 @@
                     <ContentControl Content="{Binding CurrentView}" Margin="0"/>
 
                     <materialDesign:Snackbar x:Name="MainSnackbar"
-                         HorizontalAlignment="Right"
-                         VerticalAlignment="Bottom"
-                         Margin="0,0,24,24"
-                         Background="Transparent">
+                                             HorizontalAlignment="Right"
+                                             VerticalAlignment="Bottom"
+                                             Margin="0,0,24,24"
+                                             Background="Transparent">
                         <materialDesign:Snackbar.Resources>
                             <Style TargetType="{x:Type materialDesign:SnackbarMessage}">
                                 <Setter Property="Background" Value="Transparent"/>
                                 <Setter Property="BorderThickness" Value="0"/>
-
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="{x:Type materialDesign:SnackbarMessage}">
                                             <Grid>
                                                 <ContentPresenter Content="{TemplateBinding Content}"
-                                              ContentTemplate="{TemplateBinding ContentTemplate}"
-                                              HorizontalAlignment="Stretch"
-                                              VerticalAlignment="Stretch"/>
+                                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
                                             </Grid>
                                         </ControlTemplate>
                                     </Setter.Value>
                                 </Setter>
-
                                 <Setter Property="Margin" Value="0"/>
                                 <Setter Property="Padding" Value="0"/>
                             </Style>
