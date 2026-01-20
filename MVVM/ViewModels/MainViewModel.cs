@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MaterialDesignThemes.Wpf;
+
+using System;
 using System.Collections.Generic;
 
 using WPF_PAR.Core;
@@ -25,6 +27,13 @@ namespace WPF_PAR.MVVM.ViewModels
         public FamiliaViewModel FamiliaVM { get; }
         public ClientesViewModel ClientesVM { get; }
         public SettingsViewModel SettingsVM { get; }
+        // --- MENSAJES EMERGENTES ---
+        private SnackbarMessageQueue _messageQueue;
+        public SnackbarMessageQueue MessageQueue
+        {
+            get => _messageQueue;
+            set { _messageQueue = value; OnPropertyChanged(); }
+        }
 
         // --- ESTADO DE LA VISTA ---
         private object _currentView;
@@ -70,6 +79,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
             // Obtenemos lista para el Combo Global (si se usa en MainView)
             ListaSucursales = filterService.ListaSucursales;
+            MessageQueue = new SnackbarMessageQueue(TimeSpan.FromSeconds(3));
 
             // -----------------------------------------------------------
             // CONFIGURACIÓN DE COMANDOS (AQUÍ ESTÁ EL CAMBIO)
