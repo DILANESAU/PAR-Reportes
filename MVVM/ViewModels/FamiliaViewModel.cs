@@ -208,6 +208,22 @@ namespace WPF_PAR.MVVM.ViewModels
             VerResumen = true;
         }
 
+        public void DetenerRenderizado()
+        {
+            // Poner las series en null o en array vacío detiene los cálculos de dibujo
+            SeriesPastelDinero = Array.Empty<ISeries>();
+            SeriesPastelLitros = Array.Empty<ISeries>();
+            //SeriesBarrasTop = Array.Empty<ISeries>();
+            SeriesBarrasClientes = Array.Empty<ISeries>();
+            SeriesBarrasProductos = Array.Empty<ISeries>();
+
+            // Notificar a la vista para que se actualice antes de morir
+            OnPropertyChanged(nameof(SeriesPastelDinero));
+            OnPropertyChanged(nameof(SeriesPastelLitros));
+            OnPropertyChanged(nameof(SeriesBarrasProductos));
+            OnPropertyChanged(nameof(SeriesBarrasClientes));
+            //OnPropertyChanged(nameof(SeriesBarrasTop));
+        }
         private async void EjecutarReporte()
         {
             IsLoading = true;

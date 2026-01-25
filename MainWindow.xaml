@@ -119,8 +119,8 @@
         </Style>
     </Window.Resources>
 
-    <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsMenuOpen, Mode=TwoWay}"
-                               OpenMode="Standard">
+    <materialDesign:DrawerHost IsLeftDrawerOpen="{Binding IsMenuOpen, Mode=TwoWay}" OpenMode="Standard">
+
         <materialDesign:DrawerHost.LeftDrawerContent>
             <Grid Width="270" Background="{DynamicResource MaterialDesignPaper}">
                 <Grid.RowDefinitions>
@@ -137,27 +137,24 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <materialDesign:PackIcon Kind="AccountCircle" Width="55" Height="55" 
-                                             Foreground="{DynamicResource PrimaryHueMidForegroundBrush}"
-                                             HorizontalAlignment="Left"/>
-
+                                                     Foreground="{DynamicResource PrimaryHueMidForegroundBrush}"
+                                                     HorizontalAlignment="Left"/>
                             <Button Grid.Column="1" Style="{StaticResource MaterialDesignToolForegroundButton}" 
-                             Height="30" Width="30" Padding="0"
-                             Foreground="{DynamicResource PrimaryHueMidForegroundBrush}" Opacity="0.6">
+                                    Height="30" Width="30" Padding="0"
+                                    Foreground="{DynamicResource PrimaryHueMidForegroundBrush}" Opacity="0.6">
                                 <materialDesign:PackIcon Kind="DotsVertical" />
                             </Button>
                         </Grid>
-
                         <TextBlock Text="Administrador" FontWeight="Bold" FontSize="16" Margin="4,10,0,0"
-                           Foreground="{DynamicResource PrimaryHueMidForegroundBrush}"/>
+                                   Foreground="{DynamicResource PrimaryHueMidForegroundBrush}"/>
                         <TextBlock Text="Gerente General" FontSize="13" Opacity="0.8" Margin="4,0,0,0"
-                           Foreground="{DynamicResource PrimaryHueMidForegroundBrush}"/>
+                                   Foreground="{DynamicResource PrimaryHueMidForegroundBrush}"/>
                     </StackPanel>
                 </materialDesign:ColorZone>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10">
                     <StackPanel>
                         <TextBlock Text="GENERAL" Style="{StaticResource SectionHeaderStyle}"/>
-
                         <Button Style="{StaticResource ModernNavButton}" Command="{Binding DashboardViewCommand}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="ViewDashboardOutline" Width="22" Height="22" Margin="0,0,16,0"/>
@@ -172,7 +169,6 @@
                                 <TextBlock Text="Familias y Productos" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-
                         <Button Style="{StaticResource ModernNavButton}" Command="{Binding ClientesViewCommand}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="AccountGroupOutline" Width="22" Height="22" Margin="0,0,16,0"/>
@@ -215,7 +211,6 @@
                                 <materialDesign:PackIcon Kind="BellOutline" Width="24" Height="24"/>
                             </Button>
                         </materialDesign:Badged>
-
                         <Button Style="{StaticResource MaterialDesignIconForegroundButton}" ToolTip="Ayuda" Foreground="{DynamicResource PrimaryHueMidForegroundBrush}">
                             <materialDesign:PackIcon Kind="HelpCircleOutline" Width="24" Height="24"/>
                         </Button>
@@ -223,13 +218,25 @@
                 </Grid>
             </materialDesign:ColorZone>
 
-            <materialDesign:DialogHost Identifier="RootDialog" SnackbarMessageQueue="{Binding MessageQueue}">
+            <materialDesign:DialogHost Identifier="RootDialog">
                 <Grid>
                     <materialDesign:TransitioningContent OpeningEffect="{materialDesign:TransitionEffect Kind=FadeIn}">
                         <ContentControl Content="{Binding CurrentView}" Margin="16"/>
                     </materialDesign:TransitioningContent>
 
-                    <materialDesign:Snackbar x:Name="MainSnackbar" MessageQueue="{Binding MessageQueue}"/>
+                    <materialDesign:Snackbar x:Name="MainSnackbar"
+                                             MessageQueue="{Binding MessageQueue}"
+                                             Background="Transparent"
+                                             Padding="0"
+                                             HorizontalAlignment="Center"
+                                             Margin="0,0,0,20">
+                        <materialDesign:Snackbar.Resources>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                <Setter Property="VerticalAlignment" Value="Stretch"/>
+                            </Style>
+                        </materialDesign:Snackbar.Resources>
+                    </materialDesign:Snackbar>
                 </Grid>
             </materialDesign:DialogHost>
         </DockPanel>

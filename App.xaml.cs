@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-
 using System.Windows;
-
 using WPF_PAR.MVVM.ViewModels;
 using WPF_PAR.MVVM.Views;
 using WPF_PAR.Services;
@@ -30,6 +28,7 @@ namespace WPF_PAR
             services.AddSingleton<SucursalesService>();
 
             services.AddTransient<FamiliaLogicService>();
+            services.AddTransient<ClientesLogicService>();
             services.AddTransient<ChartService>();
             services.AddTransient<ClientesService>();
             services.AddTransient<ReportesService>();

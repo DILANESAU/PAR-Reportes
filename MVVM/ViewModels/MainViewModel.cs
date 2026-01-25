@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 using WPF_PAR.Core;
 using WPF_PAR.Services;
+using WPF_PAR.Services.Interfaces;
 
 namespace WPF_PAR.MVVM.ViewModels
 {
@@ -27,13 +28,6 @@ namespace WPF_PAR.MVVM.ViewModels
         public FamiliaViewModel FamiliaVM { get; }
         public ClientesViewModel ClientesVM { get; }
         public SettingsViewModel SettingsVM { get; }
-        // --- MENSAJES EMERGENTES ---
-        private SnackbarMessageQueue _messageQueue;
-        public SnackbarMessageQueue MessageQueue
-        {
-            get => _messageQueue;
-            set { _messageQueue = value; OnPropertyChanged(); }
-        }
 
         // --- ESTADO DE LA VISTA ---
         private object _currentView;
@@ -63,13 +57,15 @@ namespace WPF_PAR.MVVM.ViewModels
             set { _areFiltersVisible = value; OnPropertyChanged(); }
         }
 
+        public SnackbarMessageQueue MessageQueue { get; }
+
         // --- CONSTRUCTOR ---
         public MainViewModel(
             FilterService filterService,
             DashboardViewModel dashboardVM,
             FamiliaViewModel familiaVM,
             ClientesViewModel clientesVM,
-            SettingsViewModel settingsVM)
+            SettingsViewModel settingsVM, INotificationService notificationService)
         {
             GlobalFilters = filterService;
             DashboardVM = dashboardVM;
@@ -79,7 +75,6 @@ namespace WPF_PAR.MVVM.ViewModels
 
             // Obtenemos lista para el Combo Global (si se usa en MainView)
             ListaSucursales = filterService.ListaSucursales;
-            MessageQueue = new SnackbarMessageQueue(TimeSpan.FromSeconds(3));
 
             // -----------------------------------------------------------
             // CONFIGURACIÓN DE COMANDOS (AQUÍ ESTÁ EL CAMBIO)
@@ -97,6 +92,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
             ClientesViewCommand = new RelayCommand(o =>
             {
+                FamiliaVM.DetenerRenderizado();
                 CurrentView = ClientesVM;
                 ClientesVM.CargarDatosIniciales();
             });
@@ -119,6 +115,10 @@ namespace WPF_PAR.MVVM.ViewModels
 
             ToggleMenuCommand = new RelayCommand(o => IsMenuOpen = !IsMenuOpen);
 
+            if ( notificationService is NotificationService servicioConcreto )
+            {
+                MessageQueue = servicioConcreto.MessageQueue;
+            }
             // VISTA INICIAL
             CurrentView = DashboardVM;
         }

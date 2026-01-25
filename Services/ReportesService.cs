@@ -20,6 +20,8 @@ namespace WPF_PAR.Services
         // Usado por: FamiliaViewModel
         // =========================================================================
 
+
+
         public async Task<List<VentaReporteModel>> ObtenerVentasBrutasRango(int sucursal, DateTime inicio, DateTime fin)
         {
             string query = @"
@@ -132,81 +134,83 @@ GROUP BY
 
         public async Task<List<VentaReporteModel>> ObtenerHistoricoAnualPorArticulo(string ejercicio, string sucursal)
         {
-            string query = @"
-    SELECT
-        v.Periodo,
-        vd.Articulo,
-        ISNULL((SELECT TOP 1 Nombre FROM Cte WHERE Cliente = v.Cliente), 'Cliente General') AS NombreCliente,
-        
-        -- 1. CANTIDAD (Volumen)
-        ISNULL(SUM(
-            CASE 
-                WHEN v.Mov LIKE '%Devoluci%n%' THEN (vd.Cantidad * -1)
-                WHEN v.Mov LIKE '%Bonifica%' THEN 0
-                ELSE vd.Cantidad
-            END
-        ), 0) AS CantidadTotal,
-
-        -- 2. DINERO (Saldo Real con Negativos)
-        ISNULL(SUM(
-            CASE 
-                WHEN v.Mov LIKE '%Devoluci%n%' THEN ((vd.Cantidad * vd.Precio) * -1)
-                WHEN v.Mov LIKE '%Bonifica%' THEN ((vd.Cantidad * vd.Precio) * -1)
-                ELSE (vd.Cantidad * vd.Precio)
-            END
-        ), 0) AS ImporteBrutoTotal,
-
-        ISNULL(SUM(
-            CASE 
-               WHEN v.Mov LIKE '%Devoluci%n%' THEN (vd.DescuentoImporte * -1)
-               ELSE vd.DescuentoImporte
-            END
-        ), 0) AS DescuentoTotal
-
-    FROM
-        VentaD vd
-        JOIN Venta v ON vd.ID = v.ID
-    WHERE
-        v.Ejercicio = @Ejercicio AND
-        vd.Sucursal = @Sucursal AND
-        v.Estatus = 'CONCLUIDO'
-        
-        -- EXCLUSIONES
-        AND v.Mov NOT LIKE '%Pedido%'
-        AND v.Mov NOT LIKE '%Venta Perdida%'
-        AND v.Mov NOT LIKE '%Cotiza%'
-        AND v.Mov NOT LIKE '%Carta Porte%'
-
-    GROUP BY
-        v.Periodo, vd.Articulo, v.Cliente";
-
+            // -------------------------------------------------------------
+            // CORRECCIÓN 1: LÓGICA DE FILTRO DINÁMICO
+            // Si la sucursal es "0", null o vacía, la ignoramos para traer TODO.
+            // -------------------------------------------------------------
+            string filtroSucursal = "";
             var parametros = new Dictionary<string, object>
     {
-        { "@Ejercicio", ejercicio },
-        { "@Sucursal", sucursal }
+        { "@Ejercicio", ejercicio }
     };
+
+            if ( !string.IsNullOrEmpty(sucursal) && sucursal != "0" )
+            {
+                filtroSucursal = "AND vd.Sucursal = @Sucursal";
+                parametros.Add("@Sucursal", sucursal);
+            }
+
+            string query = $@"
+        SELECT 
+            v.Periodo,
+            vd.Articulo,
+            ISNULL((SELECT TOP 1 Nombre FROM Cte WHERE Cliente = v.Cliente), 'Cliente General') AS NombreCliente,
+            
+            -- CANTIDAD
+            ISNULL(SUM(
+                CASE 
+                    WHEN v.Mov LIKE '%Devoluci%n%' THEN (vd.Cantidad * -1)
+                    WHEN v.Mov LIKE '%Bonifica%' THEN 0
+                    ELSE vd.Cantidad
+                END
+            ), 0) AS CantidadTotal,
+
+            -- DINERO
+            ISNULL(SUM(
+                CASE 
+                    WHEN v.Mov LIKE '%Devoluci%n%' THEN ((vd.Cantidad * vd.Precio) * -1)
+                    WHEN v.Mov LIKE '%Bonifica%' THEN ((vd.Cantidad * vd.Precio) * -1)
+                    ELSE (vd.Cantidad * vd.Precio)
+                END
+            ), 0) AS ImporteBrutoTotal
+
+        FROM VentaD vd
+        JOIN Venta v ON vd.ID = v.ID
+        WHERE 
+            v.Ejercicio = @Ejercicio 
+            AND v.Estatus = 'CONCLUIDO'
+            {filtroSucursal}  -- <--- AQUÍ SE INYECTA EL FILTRO CORRECTAMENTE
+            
+            AND v.Mov NOT LIKE '%Pedido%'
+            AND v.Mov NOT LIKE '%Venta Perdida%'
+            AND v.Mov NOT LIKE '%Cotiza%'
+            AND v.Mov NOT LIKE '%Carta Porte%'
+
+        GROUP BY v.Periodo, vd.Articulo, v.Cliente";
 
             return await _sqlHelper.QueryAsync(query, parametros, lector =>
             {
                 decimal importeBruto = lector["ImporteBrutoTotal"] != DBNull.Value ? Convert.ToDecimal(lector["ImporteBrutoTotal"]) : 0m;
                 double cantidad = lector["CantidadTotal"] != DBNull.Value ? Convert.ToDouble(lector["CantidadTotal"]) : 0d;
-                decimal precioVisual = 0;
-                if ( Math.Abs(cantidad) > 0.001 )
-                {
-                    precioVisual = Math.Abs(importeBruto / ( decimal ) cantidad);
-                }
 
                 return new VentaReporteModel
                 {
                     FechaEmision = new DateTime(int.Parse(ejercicio), Convert.ToInt32(lector["Periodo"]), 1),
-
                     Articulo = lector["Articulo"].ToString().Trim(),
                     Cliente = lector["NombreCliente"].ToString(),
+
                     Cantidad = cantidad,
                     TotalVenta = importeBruto,
 
-                    PrecioUnitario = precioVisual,
-                    Descuento = lector["DescuentoTotal"] != DBNull.Value ? Convert.ToDecimal(lector["DescuentoTotal"]) : 0m
+                    // -------------------------------------------------------------
+                    // CORRECCIÓN 2: EVITAR MULTIPLICACIÓN POR CERO
+                    // Asignamos 1 a LitrosUnitarios para que LitrosTotales = Cantidad * 1
+                    // (A menos que quieras hacer un JOIN con la tabla Art para sacar el litraje real)
+                    // -------------------------------------------------------------
+                    LitrosUnitarios = 1,
+
+                    PrecioUnitario = Math.Abs(cantidad) > 0.001 ? Math.Abs(importeBruto / ( decimal ) cantidad) : 0,
+                    Descuento = 0
                 };
             });
         }
@@ -345,6 +349,112 @@ GROUP BY
                 Total = Convert.ToDecimal(r["Total"])
             });
         }
+
+
+        // =============================================================
+        // SECCIÓN: DETALLE DE CLIENTES (KPIs y Productos)
+        // =============================================================
+
+        public async Task<KpiClienteModel> ObtenerKpisCliente(string nombreCliente, int anio, int sucursalId)
+        {
+            // Esta consulta obtiene: Frecuencia (cuantas facturas), Última Fecha y Total Comprado
+            string query = @"
+    SELECT 
+        COUNT(DISTINCT v.MovID) as Frecuencia,
+        MAX(v.FechaEmision) as UltimaCompra,
+        ISNULL(SUM(
+            CASE 
+                WHEN v.Mov LIKE '%Devoluci%n%' OR v.Mov LIKE '%Bonifica%' THEN ((vd.Cantidad * vd.Precio) * -1)
+                ELSE (vd.Cantidad * vd.Precio)
+            END
+        ), 0) AS TotalComprado
+    FROM Venta v
+    JOIN VentaD vd ON v.ID = vd.ID
+    JOIN Cte c ON v.Cliente = c.Cliente
+    WHERE 
+        v.Estatus = 'CONCLUIDO'
+        AND v.Ejercicio = @Anio
+        AND c.Nombre = @NombreCliente
+        AND (@Sucursal = 0 OR vd.Sucursal = @Sucursal)
+        AND v.Mov NOT LIKE '%Pedido%' 
+        AND v.Mov NOT LIKE '%Cotiza%'";
+
+            var parametros = new Dictionary<string, object>
+    {
+        { "@Anio", anio },
+        { "@NombreCliente", nombreCliente },
+        { "@Sucursal", sucursalId }
+    };
+
+            var resultado = await _sqlHelper.QueryAsync(query, parametros, lector =>
+            {
+                decimal total = lector["TotalComprado"] != DBNull.Value ? Convert.ToDecimal(lector["TotalComprado"]) : 0;
+                int frecuencia = lector["Frecuencia"] != DBNull.Value ? Convert.ToInt32(lector["Frecuencia"]) : 0;
+
+                return new KpiClienteModel
+                {
+                    FrecuenciaCompra = frecuencia,
+                    UltimaCompra = lector["UltimaCompra"] != DBNull.Value ? Convert.ToDateTime(lector["UltimaCompra"]) : DateTime.MinValue,
+                    // Calculamos el Ticket Promedio aquí mismo
+                    TicketPromedio = frecuencia > 0 ? total / frecuencia : 0
+                };
+            });
+
+            return resultado.FirstOrDefault() ?? new KpiClienteModel();
+        }
+
+        public async Task<List<ProductoAnalisisModel>> ObtenerVariacionProductosCliente(string nombreCliente, int anioActual, int sucursalId)
+        {
+            // Esta consulta compara el año seleccionado vs el anterior por producto
+            string query = @"
+    SELECT 
+        vd.Articulo,
+        -- Truco: Subconsulta rápida para la descripción si tienes tabla Art, si no, usa vd.Articulo
+        ISNULL((SELECT TOP 1 Descripcion1 FROM Art WHERE Articulo = vd.Articulo), vd.Articulo) as Descripcion,
+        
+        -- Venta Año Actual
+        SUM(CASE WHEN v.Ejercicio = @AnioActual THEN 
+            (CASE WHEN v.Mov LIKE '%Devoluci%n%' THEN ((vd.Cantidad * vd.Precio)*-1) ELSE (vd.Cantidad * vd.Precio) END)
+        ELSE 0 END) as VentaActual,
+        
+        -- Venta Año Anterior
+        SUM(CASE WHEN v.Ejercicio = @AnioAnterior THEN 
+            (CASE WHEN v.Mov LIKE '%Devoluci%n%' THEN ((vd.Cantidad * vd.Precio)*-1) ELSE (vd.Cantidad * vd.Precio) END)
+        ELSE 0 END) as VentaAnterior
+
+    FROM VentaD vd
+    JOIN Venta v ON vd.ID = v.ID
+    JOIN Cte c ON v.Cliente = c.Cliente
+    WHERE 
+        v.Estatus = 'CONCLUIDO'
+        AND (v.Ejercicio = @AnioActual OR v.Ejercicio = @AnioAnterior)
+        AND c.Nombre = @NombreCliente
+        AND (@Sucursal = 0 OR vd.Sucursal = @Sucursal)
+        AND v.Mov NOT LIKE '%Pedido%'
+    GROUP BY vd.Articulo
+    -- Solo traemos productos que tuvieron movimiento en alguno de los dos años
+    HAVING SUM(CASE WHEN v.Ejercicio = @AnioActual THEN (vd.Cantidad * vd.Precio) ELSE 0 END) <> 0 
+        OR SUM(CASE WHEN v.Ejercicio = @AnioAnterior THEN (vd.Cantidad * vd.Precio) ELSE 0 END) <> 0";
+
+            var parametros = new Dictionary<string, object>
+    {
+        { "@AnioActual", anioActual },
+        { "@AnioAnterior", anioActual - 1 },
+        { "@NombreCliente", nombreCliente },
+        { "@Sucursal", sucursalId }
+    };
+
+            return await _sqlHelper.QueryAsync(query, parametros, lector => new ProductoAnalisisModel
+            {
+                Articulo = lector["Articulo"].ToString(),
+                Descripcion = lector["Descripcion"].ToString(),
+                VentaActual = Convert.ToDecimal(lector["VentaActual"]),
+                VentaAnterior = Convert.ToDecimal(lector["VentaAnterior"])
+                // La Diferencia y EsPerdida se calculan solas en tu Modelo
+            });
+        }
     }
+
+
     public class GraficoPuntoModel { public int Indice { get; set; } public decimal Total { get; set; } }
 }
