@@ -8,6 +8,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <AssemblyTitle>PAR Intelligence</AssemblyTitle>
+    <AssemblyName>PAR Intelligence</AssemblyName>
+    <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,8 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\logo.ico">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
     <Content Include="Assets\Productos.csv">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Sucursales.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -36,6 +36,14 @@ namespace WPF_PAR.MVVM.ViewModels
             "Esta Semana", "Este Mes", "Este Año"
         };
 
+        private string _textoComparativo;
+        public string TextoComparativo { get => _textoComparativo; set { _textoComparativo = value; OnPropertyChanged(); } }
+
+        private bool _esCrecimientoPositivo;
+        public bool EsCrecimientoPositivo { get => _esCrecimientoPositivo; set { _esCrecimientoPositivo = value; OnPropertyChanged(); } }
+
+        private decimal _kpiVentasAnterior; // Para guardar el dato del mes pasado
+
         private string _periodoSeleccionado = "Este Mes";
         public string PeriodoSeleccionado
         {
@@ -88,6 +96,9 @@ namespace WPF_PAR.MVVM.ViewModels
 
         private int _kpiClientesNuevos;
         public int KpiClientesNuevos { get => _kpiClientesNuevos; set { _kpiClientesNuevos = value; OnPropertyChanged(); } }
+
+        private decimal _kpiLitros;
+        public decimal KpiLitros { get => _kpiLitros; set { _kpiLitros = value; OnPropertyChanged(); } }
 
         // 3. GRÁFICOS
         private ISeries[] _seriesVentas;
@@ -161,79 +172,124 @@ namespace WPF_PAR.MVVM.ViewModels
         {
             if ( IsLoading ) return;
             IsLoading = true;
+            _notificationService.ShowInfo("Cargando datos del dashboard...");
+
             try
             {
-                // A. CALCULAR FECHAS SEGÚN SELECCIÓN
-                DateTime fechaInicio = DateTime.Now;
-                DateTime fechaFin = DateTime.Now;
+                // ---------------------------------------------------------
+                // A. CALCULAR FECHAS
+                // ---------------------------------------------------------
+                DateTime fechaInicio = DateTime.Now.Date;
+                DateTime fechaFin = DateTime.Now.Date;
+                DateTime fechaInicioAnt = DateTime.Now.Date;
+                DateTime fechaFinAnt = DateTime.Now.Date;
 
                 switch ( PeriodoSeleccionado )
                 {
                     case "Esta Semana":
-                        // Lunes de la semana actual
                         int diff = ( 7 + ( DateTime.Now.DayOfWeek - DayOfWeek.Monday ) ) % 7;
                         fechaInicio = DateTime.Now.AddDays(-1 * diff).Date;
+                        // Ajuste: Fin de semana es hoy (o fin de semana real si prefieres)
+                        fechaFin = DateTime.Now.Date;
+
+                        fechaInicioAnt = fechaInicio.AddDays(-7);
+                        fechaFinAnt = fechaFin.AddDays(-7);
                         break;
+
                     case "Este Mes":
                         fechaInicio = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                        fechaInicioAnt = fechaInicio.AddMonths(-1);
+                        // El fin del periodo anterior debe ser el último día del mes pasado
+                        // O el equivalente al día de hoy del mes pasado para ser justa la comparación
+                        fechaFinAnt = fechaInicio.AddDays(-1);
                         break;
+
                     case "Este Año":
                         fechaInicio = new DateTime(DateTime.Now.Year, 1, 1);
+                        fechaInicioAnt = fechaInicio.AddYears(-1);
+                        fechaFinAnt = new DateTime(fechaInicio.Year - 1, 12, 31);
                         break;
+
                     default:
                         fechaInicio = DateTime.Today;
                         break;
                 }
 
                 int sucursalId = SucursalSeleccionada?.Id ?? 0;
-
-                // B. CARGAR DATOS GENERALES (KPIs y Listas)
-                var datosRango = await _reporteServices.ObtenerVentasRangoAsync(sucursalId, fechaInicio, fechaFin);
-
-                // Actualizar listas
-                ListaVentas.Clear();
-                foreach ( var item in datosRango ) ListaVentas.Add(item);
-
-                ProcesarDatosResumen(datosRango);
-
-                // C. CARGAR DATOS GRÁFICO (DÍAS vs MESES)
-                // Aquí usamos el nuevo método que creamos en el paso anterior.
-                // Si es "Este Año", agrupamos por mes. Si no, por día.
                 bool agruparPorMes = PeriodoSeleccionado == "Este Año";
 
-                var datosGrafico = await _reporteServices.ObtenerTendenciaGrafica(
-                    sucursalId,
-                    fechaInicio,
-                    fechaFin,
-                    agruparPorMes
-                );
+                // ---------------------------------------------------------
+                // B. EJECUCIÓN EN PARALELO (OPTIMIZACIÓN)
+                // Lanzamos las 3 tareas al mismo tiempo a SQL
+                // ---------------------------------------------------------
 
+                // 1. Datos Actuales
+                var taskActual = _reporteServices.ObtenerVentasRangoAsync(sucursalId, fechaInicio, fechaFin);
 
-                // Configurar el gráfico dinámicamente
-                ConfigurarGraficoDinamico(datosGrafico, fechaInicio, fechaFin, PeriodoSeleccionado);
+                // 2. Datos Anteriores (Comparativa)
+                var taskAnterior = _reporteServices.ObtenerVentasRangoAsync(sucursalId, fechaInicioAnt, fechaFinAnt);
 
-                if ( datosRango.Count == 0 )
+                // 3. Datos Gráfica
+                var taskGrafico = _reporteServices.ObtenerTendenciaGrafica(sucursalId, fechaInicio, fechaFin, agruparPorMes);
+
+                // Esperamos a que TODAS terminen (Más rápido que una por una)
+                await Task.WhenAll(taskActual, taskAnterior, taskGrafico);
+
+                // ---------------------------------------------------------
+                // C. PROCESAR RESULTADOS
+                // ---------------------------------------------------------
+                var datosActuales = taskActual.Result;   // Usamos este resultado para TODO
+                var datosAnteriores = taskAnterior.Result;
+                var datosGrafico = taskGrafico.Result;
+
+                // 1. Calcular Comparativa (KPIs)
+                decimal ventaActual = datosActuales.Sum(x => x.TotalVenta);
+                decimal ventaAnterior = datosAnteriores.Sum(x => x.TotalVenta);
+
+                KpiVentas = ventaActual;
+                KpiLitros = ( decimal )  datosActuales.Sum(x => x.LitrosTotal) ;
+
+                if ( ventaAnterior == 0 )
                 {
-                    // CASO VACÍO: Aviso informativo (Azul/Gris), no error rojo.
-                    string nombreSucursal = SucursalSeleccionada?.Nombre.Split('-')[1].Trim() ?? "la sucursal";
-                    _notificationService.ShowInfo($"No hay movimientos registrados en {nombreSucursal} para {PeriodoSeleccionado.ToLower()}.");
+                    TextoComparativo = "Sin datos anteriores";
+                    EsCrecimientoPositivo = true;
                 }
                 else
                 {
-                    // CASO ÉXITO: Mensaje sutil (opcional, o solo si fue manual)
-                    // Solo lo mostramos si son muchos datos o para confirmar actualización
-                    // _notificationService.ShowSuccess($"Dashboard actualizado: {datosRango.Count} operaciones.");
+                    decimal diferencia = ventaActual - ventaAnterior;
+                    decimal porcentaje = ( diferencia / ventaAnterior ) * 100;
+
+                    EsCrecimientoPositivo = porcentaje >= 0;
+                    string signo = EsCrecimientoPositivo ? "+" : "";
+                    TextoComparativo = $"{signo}{porcentaje:N1}% vs periodo anterior";
                 }
 
+                // 2. Actualizar Listas (Usando datosActuales, NO datosRango)
+                ListaVentas.Clear();
+                foreach ( var item in datosActuales ) ListaVentas.Add(item);
+
+                ProcesarDatosResumen(datosActuales);
+
+                // 3. Configurar Gráfico
+                ConfigurarGraficoDinamico(datosGrafico, fechaInicio, fechaFin, PeriodoSeleccionado);
+
+                // ---------------------------------------------------------
+                // D. FEEDBACK AL USUARIO
+                // ---------------------------------------------------------
+                if ( datosActuales.Count == 0 )
+                {
+                    string nombreSucursal = SucursalSeleccionada?.Nombre.Split('-')[1].Trim() ?? "la sucursal";
+                    _notificationService.ShowInfo($"No hay movimientos en {nombreSucursal} para {PeriodoSeleccionado.ToLower()}.");
+                }
             }
             catch ( Exception ex )
             {
-                string mensaje = $"Error de conexión: {ex.Message}";
-                _notificationService.ShowError(mensaje);
+                _notificationService.ShowError($"Error al cargar dashboard: {ex.Message}");
             }
             finally
             {
                 IsLoading = false;
+                _notificationService.ShowSuccess("Datos del dashboard actualizados.");
             }
         }
 

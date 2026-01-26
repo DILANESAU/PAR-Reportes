@@ -9,7 +9,8 @@
         xmlns:models="clr-namespace:WPF_PAR.MVVM.Models"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
-        Title="Sistema Principal - PAR Reportes" Height="768" Width="1280"
+        Title="PAR Intelligence" Height="768" Width="1280"
+        Icon="/Assets/logo.ico"
         WindowStartupLocation="CenterScreen"
         RenderOptions.BitmapScalingMode="HighQuality" 
         TextOptions.TextFormattingMode="Display"
@@ -138,13 +139,24 @@
 
                     <Separator Margin="10,10,10,20" Background="{DynamicResource MaterialDesignDivider}"/>
 
-                    <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
-                        <Border Width="40" Height="40" CornerRadius="20" Background="{DynamicResource MaterialDesignSelection}" Margin="0,0,15,0">
-                            <TextBlock Text="A" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
-                        </Border>
+                    <StackPanel Orientation="Horizontal" Margin="10,0,10,10" VerticalAlignment="Bottom">
+
+                        <materialDesign:PackIcon Kind="AccountCircle" Width="40" Height="40" 
+                             Foreground="{DynamicResource PrimaryHueLightBrush}" 
+                             VerticalAlignment="Center" Margin="0,0,10,0"/>
+
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Admin" FontWeight="Bold" FontSize="12"/>
-                            <TextBlock Text="Gerente" FontSize="10" Opacity="0.6"/>
+
+                            <TextBlock Text="{Binding UserName}" 
+                                FontWeight="Bold" 
+                                FontSize="14"
+                                Foreground="{DynamicResource MaterialDesignBody}"
+                                TextTrimming="CharacterEllipsis" 
+                                MaxWidth="150"/>
+                            <TextBlock Text="{Binding UserRol}" 
+                                FontSize="11" 
+                                Opacity="0.6"
+                                Foreground="{DynamicResource MaterialDesignBody}"/>
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>

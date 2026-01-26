@@ -199,10 +199,12 @@ namespace WPF_PAR.MVVM.ViewModels
         public void CargarDatosIniciales()
         {
             if ( _isInitialized ) return;
+            _notificationService.ShowInfo("Cargando familias...");
             IsLoading = true;
             CargarPorLinea("Todas");
             EjecutarReporte();
             _isInitialized = true;
+            _notificationService.ShowSuccess("Familias cargadas"); // Pruebas
         }
 
         public void CargarPorLinea(string linea)

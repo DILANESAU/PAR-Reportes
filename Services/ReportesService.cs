@@ -201,12 +201,6 @@ GROUP BY
 
                     Cantidad = cantidad,
                     TotalVenta = importeBruto,
-
-                    // -------------------------------------------------------------
-                    // CORRECCIÓN 2: EVITAR MULTIPLICACIÓN POR CERO
-                    // Asignamos 1 a LitrosUnitarios para que LitrosTotales = Cantidad * 1
-                    // (A menos que quieras hacer un JOIN con la tabla Art para sacar el litraje real)
-                    // -------------------------------------------------------------
                     LitrosUnitarios = 1,
 
                     PrecioUnitario = Math.Abs(cantidad) > 0.001 ? Math.Abs(importeBruto / ( decimal ) cantidad) : 0,
@@ -228,14 +222,27 @@ GROUP BY
         v.Mov,
         vd.Articulo,
         
-        -- CALCULAMOS EL NETO REAL (Igual que en el reporte detallado)
+        -- 1. CALCULAMOS EL NETO REAL (Dinero)
         ISNULL(SUM(
             CASE 
                 WHEN v.Mov LIKE '%Devoluci%n%' OR v.Mov LIKE '%Bonifica%' 
                 THEN ((vd.Cantidad * vd.Precio) * -1)
                 ELSE (vd.Cantidad * vd.Precio)
             END
-        ), 0) AS ImporteNeto
+        ), 0) AS ImporteNeto,
+
+        -- 2. CALCULAMOS LOS LITROS (Volumen) -- ¡NUEVO!
+        -- Asumiendo que vd.Cantidad son piezas/litros. Si tienes una columna 'FactorLitros', úsala.
+        -- Si 'vd.Cantidad' son los litros directos, usa esto:
+        ISNULL(SUM(
+            CASE 
+                WHEN v.Mov LIKE '%Devoluci%n%' 
+                THEN (vd.Cantidad * -1)
+                WHEN v.Mov LIKE '%Bonifica%' -- Bonificación no suele devolver producto físico, solo dinero
+                THEN 0 
+                ELSE vd.Cantidad
+            END
+        ), 0) AS LitrosTotales
 
     FROM VentaD vd
     JOIN Venta v ON vd.ID = v.ID
@@ -269,7 +276,10 @@ GROUP BY
                 MovID = lector["MovID"].ToString(),
                 Mov = lector["Mov"].ToString(),
                 Articulo = lector["Articulo"].ToString(),
-                TotalVenta = Convert.ToDecimal(lector["ImporteNeto"])
+                TotalVenta = Convert.ToDecimal(lector["ImporteNeto"]),
+
+                // ¡AHORA SÍ MAPEA LOS LITROS!
+                LitrosTotal = lector["LitrosTotales"] != DBNull.Value ? Convert.ToDouble(lector["LitrosTotales"]) : 0
             });
         }
 
@@ -349,12 +359,6 @@ GROUP BY
                 Total = Convert.ToDecimal(r["Total"])
             });
         }
-
-
-        // =============================================================
-        // SECCIÓN: DETALLE DE CLIENTES (KPIs y Productos)
-        // =============================================================
-
         public async Task<KpiClienteModel> ObtenerKpisCliente(string nombreCliente, int anio, int sucursalId)
         {
             // Esta consulta obtiene: Frecuencia (cuantas facturas), Última Fecha y Total Comprado

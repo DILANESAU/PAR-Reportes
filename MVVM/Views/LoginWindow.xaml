@@ -8,6 +8,8 @@
         Height="550" Width="900"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
+        Title="PAR Intelligence - Login"
+        Icon="/Assets/logo.ico"
         AllowsTransparency="True"
         Background="Transparent"
         ResizeMode="NoResize"

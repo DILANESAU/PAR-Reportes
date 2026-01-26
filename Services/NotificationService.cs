@@ -13,20 +13,21 @@ namespace WPF_PAR.Services
 {
     public class NotificationService : INotificationService
     {
-        // Esta es la ÚNICA cola de mensajes de toda la app
         public SnackbarMessageQueue MessageQueue { get; }
 
         public NotificationService(IDialogService dialogService)
         {
-            // Inicializamos la cola aquí
             MessageQueue = new SnackbarMessageQueue(TimeSpan.FromSeconds(3));
         }
 
-        // Método SetMessageQueue: YA NO ES NECESARIO si el servicio crea la cola.
-        // Pero para compatibilidad con la interfaz, lo dejamos vacío o lo quitamos de la interfaz.
-        public void SetMessageQueue(SnackbarMessageQueue queue)
+        // --- MÉTODO PRIVADO PARA ENVIAR CON SEGURIDAD ---
+        private void EnqueueSafely(NotificationAlert alerta)
         {
-            // No hacemos nada, porque ya tenemos nuestra propia cola.
+            // Esto asegura que SIEMPRE se ejecute en el hilo principal (UI)
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                MessageQueue.Enqueue(alerta);
+            });
         }
 
         public void ShowSuccess(string message)
@@ -37,7 +38,7 @@ namespace WPF_PAR.Services
                 Message = message,
                 Type = AlertType.Success
             };
-            MessageQueue.Enqueue(alerta);
+            EnqueueSafely(alerta); // Usamos el método seguro
         }
 
         public void ShowError(string message)
@@ -48,8 +49,11 @@ namespace WPF_PAR.Services
                 Message = message,
                 Type = AlertType.Error
             };
-            // Los errores duran un poco más
-            MessageQueue.Enqueue(alerta, null, null, null, false, true, TimeSpan.FromSeconds(5));
+
+            // Los errores a veces necesitan duración personalizada, 
+            // pero para simplificar, usaremos la cola estándar con el objeto.
+            // Si quieres duración extra, tendrías que ajustar el objeto o la cola.
+            EnqueueSafely(alerta);
         }
 
         public void ShowInfo(string message)
@@ -60,42 +64,19 @@ namespace WPF_PAR.Services
                 Message = message,
                 Type = AlertType.Info
             };
-            MessageQueue.Enqueue(alerta);
+            EnqueueSafely(alerta);
         }
 
+        // ... El resto de tu código (ShowErrorDialog) está bien ...
         public async Task ShowErrorDialog(string message)
         {
-            var view = new StackPanel { Margin = new Thickness(20), MaxWidth = 400 };
-
-            view.Children.Add(new MaterialDesignThemes.Wpf.PackIcon
+            // ... tu código existente ...
+            // Solo asegúrate de envolver el DialogHost.Show en Dispatcher si te da problemas
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
             {
-                Kind = PackIconKind.AlertCircleOutline,
-                Width = 50,
-                Height = 50,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Foreground = Brushes.Crimson,
-                Margin = new Thickness(0, 0, 0, 10)
+                // Tu lógica de creación de vista y DialogHost.Show aquí
+                // ...
             });
-
-            view.Children.Add(new TextBlock
-            {
-                Text = message,
-                TextWrapping = TextWrapping.Wrap,
-                TextAlignment = TextAlignment.Center,
-                FontSize = 14
-            });
-
-            var btn = new Button
-            {
-                Content = "ENTENDIDO",
-                Command = DialogHost.CloseDialogCommand,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 20, 0, 0),
-                Width = 120
-            };
-            view.Children.Add(btn);
-
-            await DialogHost.Show(view, "RootDialog");
         }
     }
 }

@@ -4,6 +4,7 @@
              xmlns:local="clr-namespace:WPF_PAR"
              xmlns:core="clr-namespace:WPF_PAR.Core" 
              xmlns:converters="clr-namespace:WPF_PAR.Core.Converters"
+             xmlns:model="clr-namespace:WPF_PAR.MVVM.Models"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
     <Application.Resources>
         <ResourceDictionary>
@@ -11,6 +12,34 @@
                 <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="DeepPurple" SecondaryColor="Lime"/>
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+
+            <DataTemplate DataType="{x:Type model:NotificationAlert}">
+                <Grid VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <materialDesign:PackIcon x:Name="IconoNotif" Kind="InformationCircle" 
+                                         Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14"/>
+                        <TextBlock Text="{Binding Message}" FontSize="12"/>
+                    </StackPanel>
+                </Grid>
+
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding Type}" Value="Success">
+                        <Setter TargetName="IconoNotif" Property="Kind" Value="CheckCircle"/>
+                        <Setter TargetName="IconoNotif" Property="Foreground" Value="LightGreen"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Type}" Value="Error">
+                        <Setter TargetName="IconoNotif" Property="Kind" Value="AlertCircle"/>
+                        <Setter TargetName="IconoNotif" Property="Foreground" Value="#FF8A80"/>
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
 
             <Style x:Key="PageTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="28"/>

@@ -22,5 +22,6 @@ namespace WPF_PAR.MVVM.Models
         public decimal TotalVenta { get; set; }
         public double LitrosUnitarios { get; set; }
         public double LitrosTotales => ( double ) Cantidad * LitrosUnitarios;
+        public double LitrosTotal { get; set; }
     }
 }
