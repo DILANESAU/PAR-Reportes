@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
 
 using WPF_PAR.Core;
 using WPF_PAR.MVVM.Models;
@@ -20,13 +21,15 @@ namespace WPF_PAR.MVVM.ViewModels
 {
     public class ClientesViewModel : ObservableObject
     {
+        // --- SERVICIOS ---
         private readonly ReportesService _reportesService;
         private readonly ClientesLogicService _logicService;
         private readonly IDialogService _dialogService;
         public FilterService Filters { get; }
 
-        // --- FILTROS DE AÑO (NUEVO) ---
+        // --- FILTROS ---
         public ObservableCollection<int> AñosDisponibles { get; set; }
+
         private int _anioSeleccionado;
         public int AnioSeleccionado
         {
@@ -42,12 +45,36 @@ namespace WPF_PAR.MVVM.ViewModels
             }
         }
 
-        // --- DATOS PRINCIPALES ---
-        private List<ClienteResumenModel> _todosLosClientes;
-        private ObservableCollection<ClienteResumenModel> _clientesResumen;
-        public ObservableCollection<ClienteResumenModel> ClientesResumen { get => _clientesResumen; set { _clientesResumen = value; OnPropertyChanged(); } }
+        private string _modoSeleccionado = "Anual";
+        public ObservableCollection<string> ModosVista { get; } = new ObservableCollection<string> { "Anual", "Semestral", "Trimestral" };
+        public string ModoSeleccionado
+        {
+            get => _modoSeleccionado;
+            set
+            {
+                _modoSeleccionado = value;
+                OnPropertyChanged();
+                CalcularVisibilidadPeriodos();
+                ActualizarGrafica();
 
-        // --- DETALLE CLIENTE SELECCIONADO ---
+                // ¡NUEVO! Recargar productos al cambiar modo
+                if ( ClienteSeleccionado != null )
+                {
+                    _ = CargarProductosDinamicos(); // Llamada asíncrona fire-and-forget segura en setter
+                }
+            }
+        }
+
+        // --- DATOS PRINCIPALES ---
+        private List<ClienteResumenModel> _todosLosClientes; // Copia maestra para búsqueda local
+        private ObservableCollection<ClienteResumenModel> _clientesResumen;
+        public ObservableCollection<ClienteResumenModel> ClientesResumen
+        {
+            get => _clientesResumen;
+            set { _clientesResumen = value; OnPropertyChanged(); }
+        }
+
+        // --- CLIENTE SELECCIONADO (DETALLE) ---
         private ClienteResumenModel _clienteSeleccionado;
         public ClienteResumenModel ClienteSeleccionado
         {
@@ -56,51 +83,74 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 _clienteSeleccionado = value;
                 OnPropertyChanged();
-                if ( value != null ) CargarDetalleAdicional(value); // <--- Llenar KPIs al seleccionar
-                ActualizarGrafica();
+                if ( value != null )
+                {
+                    CargarDetalleAdicional(value); // Cargar KPIs SQL
+                    ActualizarGrafica();           // Dibujar gráfica
+                }
             }
         }
 
-        // KPIs DETALLADOS (NUEVO MODELO PARA EL DETALLE)
+        // --- DATOS DEL DETALLE ---
         private KpiClienteModel _kpisDetalle;
-        public KpiClienteModel KpisDetalle { get => _kpisDetalle; set { _kpisDetalle = value; OnPropertyChanged(); } }
+        public KpiClienteModel KpisDetalle
+        {
+            get => _kpisDetalle;
+            set { _kpisDetalle = value; OnPropertyChanged(); }
+        }
 
-        public ObservableCollection<ProductoAnalisisModel> ProductosEnDeclive { get; set; }
-        public ObservableCollection<ProductoAnalisisModel> ProductosEnAumento { get; set; }
+        private ObservableCollection<ProductoAnalisisModel> _productosEnDeclive;
+        public ObservableCollection<ProductoAnalisisModel> ProductosEnDeclive
+        {
+            get => _productosEnDeclive;
+            set { _productosEnDeclive = value; OnPropertyChanged(); }
+        }
 
+        private ObservableCollection<ProductoAnalisisModel> _productosEnAumento;
+        public ObservableCollection<ProductoAnalisisModel> ProductosEnAumento
+        {
+            get => _productosEnAumento;
+            set { _productosEnAumento = value; OnPropertyChanged(); }
+        }
 
-        // --- CONTROL DE NAVEGACIÓN ---
+        // --- GRÁFICAS ---
+        private ISeries[] _seriesGrafica;
+        public ISeries[] SeriesGrafica { get => _seriesGrafica; set { _seriesGrafica = value; OnPropertyChanged(); } }
+        public Axis[] EjeXGrafica { get; set; }
+        public Axis[] EjeYGrafica { get; set; }
+
+        // --- NAVEGACIÓN Y ESTADO ---
         private bool _enModoDetalle;
         public bool EnModoDetalle
         {
             get => _enModoDetalle;
-            set { _enModoDetalle = value; OnPropertyChanged(); OnPropertyChanged(nameof(EnModoLista)); }
+            set
+            {
+                _enModoDetalle = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(EnModoLista));
+            }
         }
         public bool EnModoLista => !EnModoDetalle;
 
-        public RelayCommand VerDetalleCommand { get; set; }
-        public RelayCommand VolverListaCommand { get; set; }
+        private bool _isLoading;
+        public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
 
-        // --- KPIs GLOBALES ---
+        private string _textoBusqueda;
+        public string TextoBusqueda
+        {
+            get => _textoBusqueda;
+            set { _textoBusqueda = value; OnPropertyChanged(); FiltrarTabla(); }
+        }
+
+        // --- KPIs GLOBALES (Cabecera) ---
         private int _totalClientesActivos;
         public int TotalClientesActivos { get => _totalClientesActivos; set { _totalClientesActivos = value; OnPropertyChanged(); } }
+
         private int _totalClientesInactivos;
         public int TotalClientesInactivos { get => _totalClientesInactivos; set { _totalClientesInactivos = value; OnPropertyChanged(); } }
 
-        // --- MODOS Y GRÁFICA ---
-        public ObservableCollection<string> ModosVista { get; } = new ObservableCollection<string> { "Anual", "Semestral", "Trimestral" };
-        private string _modoSeleccionado = "Anual";
-        public string ModoSeleccionado
-        {
-            get => _modoSeleccionado;
-            set { _modoSeleccionado = value; OnPropertyChanged(); CalcularVisibilidadPeriodos(); ActualizarGrafica(); }
-        }
-
-        public ISeries[] SeriesGrafica { get; set; }
-        public Axis[] EjeXGrafica { get; set; }
-        public Axis[] EjeYGrafica { get; set; }
-
-        // --- VISIBILIDAD DINÁMICA ---
+        // --- VISIBILIDAD DE COLUMNAS ---
         public Visibility VisibilityQ1 { get; set; } = Visibility.Collapsed;
         public Visibility VisibilityQ2 { get; set; } = Visibility.Collapsed;
         public Visibility VisibilityQ3 { get; set; } = Visibility.Collapsed;
@@ -108,12 +158,14 @@ namespace WPF_PAR.MVVM.ViewModels
         public Visibility VisibilityS1 { get; set; } = Visibility.Collapsed;
         public Visibility VisibilityS2 { get; set; } = Visibility.Collapsed;
 
-        private bool _isLoading;
-        public bool IsLoading { get => _isLoading; set { _isLoading = value; OnPropertyChanged(); } }
-        private string _textoBusqueda;
-        public string TextoBusqueda { get => _textoBusqueda; set { _textoBusqueda = value; OnPropertyChanged(); FiltrarTabla(); } }
+        // --- COMANDOS ---
         public RelayCommand ActualizarCommand { get; set; }
+        public RelayCommand VerDetalleCommand { get; set; }
+        public RelayCommand VolverListaCommand { get; set; }
 
+        // =============================================================================
+        // CONSTRUCTOR
+        // =============================================================================
         public ClientesViewModel(ReportesService reportesService, FilterService filterService, IDialogService dialogService)
         {
             _reportesService = reportesService;
@@ -121,11 +173,12 @@ namespace WPF_PAR.MVVM.ViewModels
             _dialogService = dialogService;
             _logicService = new ClientesLogicService();
 
-            // Inicializar años (Ej: 2026, 2025, 2024)
+            // Inicializar años (Ej: 2026, 2025, 2024, 2023)
             int year = DateTime.Now.Year;
             AñosDisponibles = new ObservableCollection<int> { year, year - 1, year - 2, year - 3 };
-            _anioSeleccionado = year; // Sin setter para no disparar recarga doble inicial
+            _anioSeleccionado = year;
 
+            // Configurar comandos
             ActualizarCommand = new RelayCommand(o => CargarDatosIniciales());
             Filters.OnFiltrosCambiados += CargarDatosIniciales;
 
@@ -140,89 +193,50 @@ namespace WPF_PAR.MVVM.ViewModels
 
             VolverListaCommand = new RelayCommand(o =>
             {
+                DetenerRenderizado(); // Limpiar gráficas al salir del detalle
                 ClienteSeleccionado = null;
+                KpisDetalle = null;
                 EnModoDetalle = false;
-                SeriesGrafica = null;
-                KpisDetalle = null; // Limpiar detalle
             });
         }
 
+        // =============================================================================
+        // MÉTODOS DE CARGA DE DATOS
+        // =============================================================================
         public async void CargarDatosIniciales()
         {
             IsLoading = true;
             try
             {
-                // USAMOS EL AÑO SELECCIONADO, NO EL ACTUAL
-                int anioBase = AnioSeleccionado;
+                // Usamos el Año Seleccionado en el Combo
+                string anioActualStr = AnioSeleccionado.ToString();
+                string anioAnteriorStr = ( AnioSeleccionado - 1 ).ToString();
+                string sucursalId = Filters.SucursalId.ToString();
 
-                var t1 = _reportesService.ObtenerHistoricoAnualPorArticulo(anioBase.ToString(), Filters.SucursalId.ToString());
-                var t2 = _reportesService.ObtenerHistoricoAnualPorArticulo(( anioBase - 1 ).ToString(), Filters.SucursalId.ToString());
-                await Task.WhenAll(t1, t2);
+                // Carga paralela de datos (Año Actual y Año Anterior)
+                var taskActual = _reportesService.ObtenerHistoricoAnualPorArticulo(anioActualStr, sucursalId);
+                var taskAnterior = _reportesService.ObtenerHistoricoAnualPorArticulo(anioAnteriorStr, sucursalId);
 
-                _todosLosClientes = await Task.Run(() => _logicService.ProcesarClientes(t1.Result, t2.Result));
+                await Task.WhenAll(taskActual, taskAnterior);
 
+                // Procesamiento lógico (Agrupar por cliente, sumar meses, etc.)
+                _todosLosClientes = await Task.Run(() => _logicService.ProcesarClientes(taskActual.Result, taskAnterior.Result));
+
+                // Calcular KPIs Globales
                 TotalClientesActivos = _todosLosClientes.Count(x => x.VentaAnualActual > 0);
                 TotalClientesInactivos = _todosLosClientes.Count(x => x.VentaAnualActual == 0 && x.VentaAnualAnterior > 0);
 
+                // Refrescar UI
                 FiltrarTabla();
-                CalcularVisibilidadPeriodos(); // <--- Recalcular visibilidad según si es año pasado o actual
+                CalcularVisibilidadPeriodos();
 
+                // Resetear selección
                 ClienteSeleccionado = null;
                 SeriesGrafica = null;
             }
-            catch ( Exception ex ) { _dialogService.ShowMessage("Error", ex.Message); }
-            finally { IsLoading = false; }
-        }
-
-        // --- NUEVO: CARGAR DETALLES AL DAR CLIC ---
-        // En ClientesViewModel.cs
-
-        private async void CargarDetalleAdicional(ClienteResumenModel cliente)
-        {
-            if ( cliente == null ) return;
-            IsLoading = true; // Mostramos spinner mientras carga el detalle
-
-            try
-            {
-                // 1. Cargar KPIs (Ticket, Frecuencia, Ultima Compra)
-                KpisDetalle = await _reportesService.ObtenerKpisCliente(
-                    cliente.Nombre,
-                    AnioSeleccionado,
-                    Filters.SucursalId);
-
-                // 2. Cargar Productos (Variación)
-                var todosProductos = await _reportesService.ObtenerVariacionProductosCliente(
-                    cliente.Nombre,
-                    AnioSeleccionado,
-                    Filters.SucursalId);
-
-                // 3. Filtrar y Ordenar en Memoria para las dos tablas
-
-                // DECLIVE: Diferencia negativa (se vendió menos que el año pasado)
-                var declive = todosProductos
-                    .Where(x => x.Diferencia < 0)
-                    .OrderBy(x => x.Diferencia) // De mayor pérdida a menor
-                    .Take(10) // Top 10
-                    .ToList();
-
-                // AUMENTO: Diferencia positiva
-                var aumento = todosProductos
-                    .Where(x => x.Diferencia > 0)
-                    .OrderByDescending(x => x.Diferencia) // De mayor ganancia a menor
-                    .Take(10) // Top 10
-                    .ToList();
-
-                ProductosEnDeclive = new ObservableCollection<ProductoAnalisisModel>(declive);
-                ProductosEnAumento = new ObservableCollection<ProductoAnalisisModel>(aumento);
-
-                // Notificar a la vista
-                OnPropertyChanged(nameof(KpisDetalle));
-                OnPropertyChanged(nameof(ProductosEnDeclive));
-                OnPropertyChanged(nameof(ProductosEnAumento));
-            }
             catch ( Exception ex )
             {
-                _dialogService.ShowMessage("Error al cargar detalle", ex.Message);
+                _dialogService.ShowMessage("Error al cargar datos", ex.Message);
             }
             finally
             {
@@ -230,42 +244,206 @@ namespace WPF_PAR.MVVM.ViewModels
             }
         }
 
+        private async Task CargarProductosDinamicos()
+        {
+            if ( ClienteSeleccionado == null ) return;
+
+            // No ponemos IsLoading global aquí para no bloquear toda la UI al cambiar pestañitas, 
+            // pero podrías poner una banderita local si quieres.
+
+            try
+            {
+                var (inicio, fin) = ObtenerRangoFechas();
+
+                var todosProductos = await _reportesService.ObtenerVariacionProductosCliente(
+                    ClienteSeleccionado.Nombre,
+                    inicio,
+                    fin,
+                    Filters.SucursalId);
+
+                // Procesar Tops
+                var declive = todosProductos.Where(x => x.Diferencia < 0).OrderBy(x => x.Diferencia).Take(10).ToList();
+                var aumento = todosProductos.Where(x => x.Diferencia > 0).OrderByDescending(x => x.Diferencia).Take(10).ToList();
+
+                ProductosEnDeclive = new ObservableCollection<ProductoAnalisisModel>(declive);
+                ProductosEnAumento = new ObservableCollection<ProductoAnalisisModel>(aumento);
+
+                OnPropertyChanged(nameof(ProductosEnDeclive));
+                OnPropertyChanged(nameof(ProductosEnAumento));
+            }
+            catch ( Exception ex )
+            {
+                System.Diagnostics.Debug.WriteLine("Error cargando productos: " + ex.Message);
+            }
+        }
+
+        private (DateTime Inicio, DateTime Fin) ObtenerRangoFechas()
+        {
+            int anio = AnioSeleccionado;
+            int mes = DateTime.Now.Month;
+
+            // Si estamos viendo un año pasado, asumimos el periodo completo (o el último Q)
+            // Para simplificar, si es año pasado, comparamos años completos en modo Anual,
+            // o el semestre/trimestre FINAL.
+            // PERO lo más útil suele ser "Lo que va del año" (YTD).
+
+            // LÓGICA:
+            // Anual -> Todo el año
+            // Semestral -> El semestre ACTUAL (o el 1 si estamos en Ene-Jun)
+            // Trimestral -> El trimestre ACTUAL
+
+            if ( ModoSeleccionado == "Anual" )
+            {
+                return (new DateTime(anio, 1, 1), new DateTime(anio, 12, 31));
+            }
+
+            if ( ModoSeleccionado == "Semestral" )
+            {
+                // Si estamos en el segundo semestre (Julio+), mostramos S2. Si no, S1.
+                // Si es año pasado, mostramos S2 (todo el año casi).
+                // Ajusta esto a tu gusto. Aquí pongo: Si mes > 6 -> S2, sino S1.
+                bool esS2 = mes > 6;
+                return esS2
+                    ? (new DateTime(anio, 7, 1), new DateTime(anio, 12, 31))
+                    : (new DateTime(anio, 1, 1), new DateTime(anio, 6, 30));
+            }
+
+            if ( ModoSeleccionado == "Trimestral" )
+            {
+                // Determinamos Q actual
+                if ( mes <= 3 ) return (new DateTime(anio, 1, 1), new DateTime(anio, 3, 31));       // Q1
+                if ( mes <= 6 ) return (new DateTime(anio, 4, 1), new DateTime(anio, 6, 30));       // Q2
+                if ( mes <= 9 ) return (new DateTime(anio, 7, 1), new DateTime(anio, 9, 30));       // Q3
+                return (new DateTime(anio, 10, 1), new DateTime(anio, 12, 31));                   // Q4
+            }
+
+            return (new DateTime(anio, 1, 1), new DateTime(anio, 12, 31));
+        }
+        private async void CargarDetalleAdicional(ClienteResumenModel cliente)
+        {
+            if ( cliente == null ) return;
+            IsLoading = true;
+
+            try
+            {
+                // KPIs (Se mantienen fijos anuales, o podrías hacerlos dinámicos igual)
+                KpisDetalle = await _reportesService.ObtenerKpisCliente(cliente.Nombre, AnioSeleccionado, Filters.SucursalId);
+
+                // Productos (Ahora son dinámicos)
+                await CargarProductosDinamicos();
+            }
+            catch ( Exception ex )
+            {
+                _dialogService.ShowMessage("Error", ex.Message);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        // =============================================================================
+        // LÓGICA VISUAL Y GRÁFICAS
+        // =============================================================================
         private void CalcularVisibilidadPeriodos()
         {
-            // SI ES UN AÑO PASADO (Ej: 2024 cuando estamos en 2025) -> MOSTRAR TODO
-            if ( AnioSeleccionado < DateTime.Now.Year )
-            {
-                bool esTri = ModoSeleccionado == "Trimestral";
-                bool esSem = ModoSeleccionado == "Semestral";
+            // Lógica Exclusiva por Modo
+            bool esTri = ModoSeleccionado == "Trimestral";
+            bool esSem = ModoSeleccionado == "Semestral";
+            // Si es "Anual", ambos serán false y se ocultará todo el detalle (dejando solo el total anual)
 
-                VisibilityQ1 = VisibilityQ2 = VisibilityQ3 = VisibilityQ4 = esTri ? Visibility.Visible : Visibility.Collapsed;
-                VisibilityS1 = VisibilityS2 = esSem ? Visibility.Visible : Visibility.Collapsed;
-            }
-            else
-            {
-                // SI ES AÑO ACTUAL -> Lógica progresiva
-                var hoy = DateTime.Now;
-                bool q1Ok = hoy.Month >= 4; bool q2Ok = hoy.Month >= 7; bool q3Ok = hoy.Month >= 10;
-                bool s1Ok = hoy.Month >= 7;
+            // TRIMESTRES: Visibles solo si el modo es Trimestral
+            VisibilityQ1 = esTri ? Visibility.Visible : Visibility.Collapsed;
+            VisibilityQ2 = esTri ? Visibility.Visible : Visibility.Collapsed;
+            VisibilityQ3 = esTri ? Visibility.Visible : Visibility.Collapsed;
+            VisibilityQ4 = esTri ? Visibility.Visible : Visibility.Collapsed;
 
-                bool esTri = ModoSeleccionado == "Trimestral";
-                bool esSem = ModoSeleccionado == "Semestral";
+            // SEMESTRES: Visibles solo si el modo es Semestral
+            VisibilityS1 = esSem ? Visibility.Visible : Visibility.Collapsed;
+            VisibilityS2 = esSem ? Visibility.Visible : Visibility.Collapsed;
 
-                VisibilityQ1 = ( esTri && q1Ok ) ? Visibility.Visible : Visibility.Collapsed;
-                VisibilityQ2 = ( esTri && q2Ok ) ? Visibility.Visible : Visibility.Collapsed;
-                VisibilityQ3 = ( esTri && q3Ok ) ? Visibility.Visible : Visibility.Collapsed;
-                VisibilityQ4 = Visibility.Collapsed; // Aún no acaba
-
-                VisibilityS1 = ( esSem && s1Ok ) ? Visibility.Visible : Visibility.Collapsed;
-                VisibilityS2 = Visibility.Collapsed;
-            }
-
-            OnPropertyChanged(nameof(VisibilityQ1)); OnPropertyChanged(nameof(VisibilityQ2)); OnPropertyChanged(nameof(VisibilityQ3)); OnPropertyChanged(nameof(VisibilityQ4));
+            // Notificar a la vista
+            OnPropertyChanged(nameof(VisibilityQ1)); OnPropertyChanged(nameof(VisibilityQ2));
+            OnPropertyChanged(nameof(VisibilityQ3)); OnPropertyChanged(nameof(VisibilityQ4));
             OnPropertyChanged(nameof(VisibilityS1)); OnPropertyChanged(nameof(VisibilityS2));
         }
 
-        // ... (ActualizarGrafica y FiltrarTabla se mantienen igual) ...
-        private void ActualizarGrafica() { /* Tu código existente */ }
-        private void FiltrarTabla() { /* Tu código existente */ }
+        private void ActualizarGrafica()
+        {
+            // Solo dibujamos si hay cliente seleccionado y tiene historia
+            if ( ClienteSeleccionado == null || ClienteSeleccionado.HistoriaMensualActual == null )
+            {
+                SeriesGrafica = null;
+                return;
+            }
+
+            var historia = ClienteSeleccionado.HistoriaMensualActual;
+            var valores = new List<decimal>();
+            string[] etiquetas = null;
+
+            // Agrupar datos según el modo de vista
+            switch ( ModoSeleccionado )
+            {
+                case "Anual":
+                    valores = historia; // 12 meses
+                    etiquetas = new[] { "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC" };
+                    break;
+                case "Semestral":
+                    valores.Add(historia.Take(6).Sum());
+                    valores.Add(historia.Skip(6).Take(6).Sum());
+                    etiquetas = new[] { "SEM 1", "SEM 2" };
+                    break;
+                case "Trimestral":
+                    for ( int i = 0; i < 4; i++ ) valores.Add(historia.Skip(i * 3).Take(3).Sum());
+                    etiquetas = new[] { "T1", "T2", "T3", "T4" };
+                    break;
+            }
+
+            // Configurar LiveCharts
+            SeriesGrafica = new ISeries[]
+            {
+                new LineSeries<decimal>
+                {
+                    Values = valores,
+                    Fill = new SolidColorPaint(SKColors.DodgerBlue.WithAlpha(30)),
+                    Stroke = new SolidColorPaint(SKColors.DodgerBlue) { StrokeThickness = 3 },
+                    GeometrySize = 8,
+                    GeometryFill = new SolidColorPaint(SKColors.White),
+                    GeometryStroke = new SolidColorPaint(SKColors.DodgerBlue) { StrokeThickness = 2 },
+                    DataLabelsPaint = new SolidColorPaint(SKColors.Black),
+                    DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Top,
+                    DataLabelsFormatter = p => p.Model >= 1000000 ? $"{p.Model/1000000:N1}M" : (p.Model >= 1000 ? $"{p.Model/1000:N0}K" : $"{p.Model:N0}")
+                }
+            };
+
+            EjeXGrafica = new Axis[] { new Axis { Labels = etiquetas, LabelsRotation = 0, TextSize = 12 } };
+            EjeYGrafica = new Axis[] { new Axis { Labeler = v => v >= 1000 ? $"{v / 1000:N0}K" : $"{v:N0}", ShowSeparatorLines = true } };
+
+            OnPropertyChanged(nameof(EjeXGrafica));
+            OnPropertyChanged(nameof(EjeYGrafica));
+        }
+
+        // Método vital para evitar crashes al salir de la pantalla
+        public void DetenerRenderizado()
+        {
+            SeriesGrafica = null; // Detiene el ticker de LiveCharts
+        }
+
+        private void FiltrarTabla()
+        {
+            if ( _todosLosClientes == null ) return;
+
+            if ( string.IsNullOrWhiteSpace(TextoBusqueda) )
+            {
+                ClientesResumen = new ObservableCollection<ClienteResumenModel>(_todosLosClientes);
+            }
+            else
+            {
+                var filtrados = _todosLosClientes
+                    .Where(x => x.Nombre.IndexOf(TextoBusqueda, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+                ClientesResumen = new ObservableCollection<ClienteResumenModel>(filtrados);
+            }
+        }
     }
 }

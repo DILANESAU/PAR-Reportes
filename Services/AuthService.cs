@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 
 using WPF_PAR.MVVM.Models;
+using System.Threading.Tasks; // <--- FALTABA ESTE
+using System.Linq;            // <--- FALTABA ESTE
 
 namespace WPF_PAR.Services
 {

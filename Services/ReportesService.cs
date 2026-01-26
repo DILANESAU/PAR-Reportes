@@ -127,7 +127,7 @@ GROUP BY
                     Descuento = descuento,
                     TotalVenta = importeTotalSql,
 
-                    PrecioUnitario = Math.Abs(precioUnitarioVisual) 
+                    PrecioUnitario = Math.Abs(precioUnitarioVisual)
                 };
             });
         }
@@ -403,22 +403,26 @@ GROUP BY
             return resultado.FirstOrDefault() ?? new KpiClienteModel();
         }
 
-        public async Task<List<ProductoAnalisisModel>> ObtenerVariacionProductosCliente(string nombreCliente, int anioActual, int sucursalId)
+        // En ReportesService.cs
+
+        public async Task<List<ProductoAnalisisModel>> ObtenerVariacionProductosCliente(string nombreCliente, DateTime inicio, DateTime fin, int sucursalId)
         {
-            // Esta consulta compara el año seleccionado vs el anterior por producto
+            // Calculamos las fechas equivalentes del año anterior
+            DateTime inicioAnt = inicio.AddYears(-1);
+            DateTime finAnt = fin.AddYears(-1);
+
             string query = @"
     SELECT 
         vd.Articulo,
-        -- Truco: Subconsulta rápida para la descripción si tienes tabla Art, si no, usa vd.Articulo
         ISNULL((SELECT TOP 1 Descripcion1 FROM Art WHERE Articulo = vd.Articulo), vd.Articulo) as Descripcion,
         
-        -- Venta Año Actual
-        SUM(CASE WHEN v.Ejercicio = @AnioActual THEN 
+        -- Venta Rango Actual
+        SUM(CASE WHEN v.FechaEmision >= @Inicio AND v.FechaEmision <= @Fin THEN 
             (CASE WHEN v.Mov LIKE '%Devoluci%n%' THEN ((vd.Cantidad * vd.Precio)*-1) ELSE (vd.Cantidad * vd.Precio) END)
         ELSE 0 END) as VentaActual,
         
-        -- Venta Año Anterior
-        SUM(CASE WHEN v.Ejercicio = @AnioAnterior THEN 
+        -- Venta Rango Anterior (Mismo periodo, año pasado)
+        SUM(CASE WHEN v.FechaEmision >= @InicioAnt AND v.FechaEmision <= @FinAnt THEN 
             (CASE WHEN v.Mov LIKE '%Devoluci%n%' THEN ((vd.Cantidad * vd.Precio)*-1) ELSE (vd.Cantidad * vd.Precio) END)
         ELSE 0 END) as VentaAnterior
 
@@ -427,19 +431,23 @@ GROUP BY
     JOIN Cte c ON v.Cliente = c.Cliente
     WHERE 
         v.Estatus = 'CONCLUIDO'
-        AND (v.Ejercicio = @AnioActual OR v.Ejercicio = @AnioAnterior)
+        AND (
+             (v.FechaEmision >= @Inicio AND v.FechaEmision <= @Fin) OR 
+             (v.FechaEmision >= @InicioAnt AND v.FechaEmision <= @FinAnt)
+            )
         AND c.Nombre = @NombreCliente
         AND (@Sucursal = 0 OR vd.Sucursal = @Sucursal)
         AND v.Mov NOT LIKE '%Pedido%'
     GROUP BY vd.Articulo
-    -- Solo traemos productos que tuvieron movimiento en alguno de los dos años
-    HAVING SUM(CASE WHEN v.Ejercicio = @AnioActual THEN (vd.Cantidad * vd.Precio) ELSE 0 END) <> 0 
-        OR SUM(CASE WHEN v.Ejercicio = @AnioAnterior THEN (vd.Cantidad * vd.Precio) ELSE 0 END) <> 0";
+    HAVING SUM(CASE WHEN v.FechaEmision >= @Inicio AND v.FechaEmision <= @Fin THEN (vd.Cantidad * vd.Precio) ELSE 0 END) <> 0 
+        OR SUM(CASE WHEN v.FechaEmision >= @InicioAnt AND v.FechaEmision <= @FinAnt THEN (vd.Cantidad * vd.Precio) ELSE 0 END) <> 0";
 
             var parametros = new Dictionary<string, object>
     {
-        { "@AnioActual", anioActual },
-        { "@AnioAnterior", anioActual - 1 },
+        { "@Inicio", inicio },
+        { "@Fin", fin },
+        { "@InicioAnt", inicioAnt },
+        { "@FinAnt", finAnt },
         { "@NombreCliente", nombreCliente },
         { "@Sucursal", sucursalId }
     };
@@ -450,11 +458,11 @@ GROUP BY
                 Descripcion = lector["Descripcion"].ToString(),
                 VentaActual = Convert.ToDecimal(lector["VentaActual"]),
                 VentaAnterior = Convert.ToDecimal(lector["VentaAnterior"])
-                // La Diferencia y EsPerdida se calculan solas en tu Modelo
+                // Diferencia se calcula sola en el modelo
             });
         }
+
     }
 
-
-    public class GraficoPuntoModel { public int Indice { get; set; } public decimal Total { get; set; } }
+        public class GraficoPuntoModel { public int Indice { get; set; } public decimal Total { get; set; } }
 }

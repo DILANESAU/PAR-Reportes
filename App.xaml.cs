@@ -40,6 +40,8 @@ namespace WPF_PAR
             services.AddTransient<FamiliaViewModel>();
             services.AddTransient<ClientesViewModel>();
             services.AddTransient<SettingsViewModel>();
+            services.AddTransient<LoginViewModel>();
+
 
             services.AddTransient<MainWindow>();
             services.AddTransient<LoginWindow>();

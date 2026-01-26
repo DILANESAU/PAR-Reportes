@@ -118,6 +118,18 @@ namespace WPF_PAR.MVVM.ViewModels
         private string _subLineaSeleccionada;
         public string SubLineaSeleccionada { get => _subLineaSeleccionada; set { _subLineaSeleccionada = value; OnPropertyChanged(); if ( !string.IsNullOrEmpty(value) ) ActualizarGraficosPorSubLinea(); } }
 
+        private bool _excluirBlancos;
+        public bool ExcluirBlancos
+        {
+            get => _excluirBlancos;
+            set
+            {
+                _excluirBlancos = value;
+                OnPropertyChanged();
+                ActualizarGraficosPorSubLinea(); // <--- Recalcula al cambiar el switch
+            }
+        }
+
         // Usamos la lista del servicio FilterService, pero si necesitas exponerla localmente:
         // public ObservableCollection<KeyValuePair<int, string>> ListaSucursales => Filters.ListaSucursales; 
 
@@ -300,42 +312,141 @@ namespace WPF_PAR.MVVM.ViewModels
         {
             if ( _datosFamiliaActual == null ) return;
 
-            var datosBase = _datosFamiliaActual.Where(x => !x.Linea.Contains("FERRETERIA", StringComparison.OrdinalIgnoreCase)).ToList();
+            // 1. Filtrado Base (Quitamos Ferretería si aplica)
+            var datosBase = _datosFamiliaActual
+                .Where(x => !x.Linea.Contains("FERRETERIA", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
             string filtro = SubLineaSeleccionada;
             bool esVistaGlobal = ( filtro == "TODAS" || string.IsNullOrEmpty(filtro) );
-            var datosFiltrados = esVistaGlobal ? datosBase.ToList() : datosBase.Where(x => ( x.Linea ?? "" ).Equals(filtro, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            var datosFiltrados = esVistaGlobal
+                ? datosBase.ToList()
+                : datosBase.Where(x => ( x.Linea ?? "" ).Equals(filtro, StringComparison.OrdinalIgnoreCase)).ToList();
+
             DetalleVentas = new ObservableCollection<VentaReporteModel>(datosFiltrados.OrderByDescending(x => x.TotalVenta));
 
             // Títulos
             TituloGraficoPastel = esVistaGlobal ? "Distribución por Línea ($)" : "Distribución por Producto ($)";
 
-            // Datos Pasteles
+            // Datos para Pasteles (Agrupación)
             var resumenDatos = esVistaGlobal
-                ? datosFiltrados.GroupBy(x => x.Linea).Select(g => new { Nombre = g.Key, Venta = g.Sum(x => x.TotalVenta), Litros = ( double ) g.Sum(x => x.LitrosTotales) }).ToList()
-                : datosFiltrados.GroupBy(x => x.Descripcion).Select(g => new { Nombre = g.Key, Venta = g.Sum(x => x.TotalVenta), Litros = ( double ) g.Sum(x => x.LitrosTotales) }).ToList();
+                ? datosFiltrados
+                    .GroupBy(x => x.Linea)
+                    .Select(g => new { Nombre = g.Key, Venta = g.Sum(x => x.TotalVenta), Litros = ( double ) g.Sum(x => x.LitrosTotales) })
+                    .ToList()
+                : datosFiltrados
+                    .GroupBy(x => x.Descripcion)
+                    .Select(g => new { Nombre = g.Key, Venta = g.Sum(x => x.TotalVenta), Litros = ( double ) g.Sum(x => x.LitrosTotales) })
+                    .ToList();
 
-            SeriesPastelDinero = resumenDatos.OrderByDescending(x => x.Venta).Take(5).Select(x => new PieSeries<double> { Values = new double[] { ( double ) x.Venta }, Name = NormalizarNombreProducto(x.Nombre), DataLabelsPaint = new SolidColorPaint(SKColors.Black), DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer, DataLabelsFormatter = p => $"{p.Model:C0}\n({p.StackedValue.Share:P0})", ToolTipLabelFormatter = p => $"{p.Context.Series.Name}: {p.Model:C0} ({p.StackedValue.Share:P1})" }).ToArray();
-            SeriesPastelLitros = resumenDatos.OrderByDescending(x => x.Litros).Take(5).Select(x => new PieSeries<double> { Values = new double[] { x.Litros }, Name = NormalizarNombreProducto(x.Nombre), DataLabelsPaint = new SolidColorPaint(SKColors.Black), DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer, DataLabelsFormatter = p => $"{p.Model:N0} L\n({p.StackedValue.Share:P0})", ToolTipLabelFormatter = p => $"{p.Context.Series.Name}: {p.Model:N0} L ({p.StackedValue.Share:P1})" }).ToArray();
+            // ========================================================================
+            // 1. GRÁFICOS DE PASTEL (Estilo Sólido - InnerRadius 0)
+            // ========================================================================
 
-            // Gráficas de Barras (Usando el parámetro TopSeleccionado)
-            // 1. Clientes
-            var topClientes = datosFiltrados.GroupBy(x => x.Cliente).Select(g => new VentaReporteModel { Descripcion = Truncar(g.Key, 20), TotalVenta = g.Sum(x => x.TotalVenta), LitrosUnitarios = g.Sum(x => x.LitrosTotales) }).ToList();
-            var resClientes = _chartService.GenerarTopProductos(topClientes, VerPorLitros, TopSeleccionado);
-            SeriesBarrasClientes = resClientes.Series; EjeXBarrasClientes = resClientes.EjesX; EjeYBarrasClientes = resClientes.EjesY;
+            // Pastel Dinero
+            SeriesPastelDinero = resumenDatos
+                .OrderByDescending(x => x.Venta)
+                .Take(5)
+                .Select(x => new PieSeries<double>
+                {
+                    Values = new double[] { ( double ) x.Venta },
+                    Name = NormalizarNombreProducto(x.Nombre),
+                    InnerRadius = 0, // CERO para pastel completo
+
+                    // Formato limpio: "$1,500 (45%)"
+                    DataLabelsFormatter = p => $"{p.Model:C0} ({p.StackedValue.Share:P0})",
+
+                    DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer,
+                    DataLabelsPaint = new SolidColorPaint(SKColors.Black),
+                    DataLabelsSize = 11,
+                    ToolTipLabelFormatter = p => $"{p.Context.Series.Name}: {p.Model:C0} ({p.StackedValue.Share:P1})"
+                }).ToArray();
+
+            // Pastel Litros
+            SeriesPastelLitros = resumenDatos
+                .OrderByDescending(x => x.Litros)
+                .Take(5)
+                .Select(x => new PieSeries<double>
+                {
+                    Values = new double[] { x.Litros },
+                    Name = NormalizarNombreProducto(x.Nombre),
+                    InnerRadius = 0, // CERO para pastel completo
+
+                    // Formato limpio: "500 L (20%)"
+                    DataLabelsFormatter = p => $"{p.Model:N0} L ({p.StackedValue.Share:P0})",
+
+                    DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Outer,
+                    DataLabelsPaint = new SolidColorPaint(SKColors.Black),
+                    DataLabelsSize = 11,
+                    ToolTipLabelFormatter = p => $"{p.Context.Series.Name}: {p.Model:N0} L ({p.StackedValue.Share:P1})"
+                }).ToArray();
+
+
+            // ========================================================================
+            // 2. GRÁFICOS DE BARRAS (Top Clientes y Productos)
+            // ========================================================================
+
+            // --- IZQUIERDA: TOP CLIENTES ---
+            // (A los clientes NO les aplicamos el filtro de blancos, queremos ver quién compra más en general)
+            var datosParaClientes = datosFiltrados.Select(x => new VentaReporteModel
+            {
+                Descripcion = x.Cliente, // TRUCO: Pasamos Cliente en la Descripción para que el servicio agrupe por Cliente
+                TotalVenta = x.TotalVenta,
+                Cantidad = x.LitrosTotales,
+                LitrosUnitarios = 1
+            }).ToList();
+
+            var resClientes = _chartService.GenerarTopProductos(datosParaClientes, VerPorLitros, TopSeleccionado);
+
+            SeriesBarrasClientes = resClientes.Series;
+            EjeXBarrasClientes = resClientes.EjesX;
+            EjeYBarrasClientes = resClientes.EjesY;
             TituloBarrasClientes = $"Top {TopSeleccionado} Clientes";
 
-            // 2. Productos
-            var topProductos = datosFiltrados.GroupBy(x => x.Descripcion).Select(g => new VentaReporteModel { Descripcion = Truncar(g.Key, 20), TotalVenta = g.Sum(x => x.TotalVenta), LitrosUnitarios = g.Sum(x => x.LitrosTotales) }).ToList();
-            var resProductos = _chartService.GenerarTopProductos(topProductos, VerPorLitros, TopSeleccionado);
-            SeriesBarrasProductos = resProductos.Series; EjeXBarrasProductos = resProductos.EjesX; EjeYBarrasProductos = resProductos.EjesY;
-            TituloBarrasProductos = $"Top {TopSeleccionado} Productos";
 
-            // Notificaciones
-            OnPropertyChanged(nameof(SeriesPastelDinero)); OnPropertyChanged(nameof(SeriesPastelLitros)); OnPropertyChanged(nameof(TituloGraficoPastel));
-            OnPropertyChanged(nameof(SeriesBarrasClientes)); OnPropertyChanged(nameof(EjeXBarrasClientes)); OnPropertyChanged(nameof(EjeYBarrasClientes)); OnPropertyChanged(nameof(TituloBarrasClientes));
-            OnPropertyChanged(nameof(SeriesBarrasProductos)); OnPropertyChanged(nameof(EjeXBarrasProductos)); OnPropertyChanged(nameof(EjeYBarrasProductos)); OnPropertyChanged(nameof(TituloBarrasProductos));
+            // --- DERECHA: TOP PRODUCTOS (Con lógica de Excluir Blancos) ---
+            var datosParaProductos = datosFiltrados.ToList();
+
+            if ( ExcluirBlancos )
+            {
+                // Filtramos cualquier producto que parezca BLANCO
+                datosParaProductos = datosParaProductos
+                    .Where(x => !x.Descripcion.ToUpper().Contains("BLANCO")
+                             && !x.Descripcion.ToUpper().Contains(" BCO ")
+                             && !x.Descripcion.ToUpper().EndsWith(" BCO"))
+                    .ToList();
+
+                TituloBarrasProductos = $"Top {TopSeleccionado} Colores (Sin Blancos)";
+            }
+            else
+            {
+                TituloBarrasProductos = $"Top {TopSeleccionado} Productos";
+            }
+
+            var resProductos = _chartService.GenerarTopProductos(datosParaProductos, VerPorLitros, TopSeleccionado);
+
+            SeriesBarrasProductos = resProductos.Series;
+            EjeXBarrasProductos = resProductos.EjesX;
+            EjeYBarrasProductos = resProductos.EjesY;
+
+            // ========================================================================
+            // 3. NOTIFICACIONES A LA VISTA
+            // ========================================================================
+            OnPropertyChanged(nameof(SeriesPastelDinero));
+            OnPropertyChanged(nameof(SeriesPastelLitros));
+            OnPropertyChanged(nameof(TituloGraficoPastel));
+
+            OnPropertyChanged(nameof(SeriesBarrasClientes));
+            OnPropertyChanged(nameof(EjeXBarrasClientes));
+            OnPropertyChanged(nameof(EjeYBarrasClientes));
+            OnPropertyChanged(nameof(TituloBarrasClientes));
+
+            OnPropertyChanged(nameof(SeriesBarrasProductos));
+            OnPropertyChanged(nameof(EjeXBarrasProductos));
+            OnPropertyChanged(nameof(EjeYBarrasProductos));
+            OnPropertyChanged(nameof(TituloBarrasProductos));
         }
-
         private string Truncar(string t, int m) => t.Length > m ? t.Substring(0, m - 3) + "..." : t;
         private string NormalizarNombreProducto(string n) { if ( string.IsNullOrEmpty(n) ) return ""; string l = n.Trim(); if ( l.Contains("-") ) { var p = l.Split('-'); if ( p.Length > 1 ) l = p[1]; } return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(l.ToLower()); }
 

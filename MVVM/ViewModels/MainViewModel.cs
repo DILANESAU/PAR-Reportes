@@ -14,12 +14,25 @@ namespace WPF_PAR.MVVM.ViewModels
         public FilterService GlobalFilters { get; }
         public Dictionary<int, string> ListaSucursales { get; set; }
 
-        // --- COMANDOS DE NAVEGACIÓN ---
+        // --- PROPIEDADES DE USUARIO ---
+        private string _userName;
+        public string UserName
+        {
+            get => _userName;
+            set { _userName = value; OnPropertyChanged(); }
+        }
+
+        private string _userRol;
+        public string UserRol
+        {
+            get => _userRol;
+            set { _userRol = value; OnPropertyChanged(); }
+        }
+        // --- COMANDOS ---
         public RelayCommand DashboardViewCommand { get; set; }
         public RelayCommand FamiliaViewCommand { get; set; }
         public RelayCommand ClientesViewCommand { get; set; }
         public RelayCommand SettingsViewCommand { get; set; }
-
         public RelayCommand NavegarLineaCommand { get; set; }
         public RelayCommand ToggleMenuCommand { get; set; }
 
@@ -38,12 +51,13 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 _currentView = value;
                 OnPropertyChanged();
-                // Ocultar barra de filtros si estamos en Configuración
+
+                // Lógica automática: Ocultar filtros y Cambiar Título
                 AreFiltersVisible = !( value is SettingsViewModel );
             }
         }
 
-        private bool _isMenuOpen = true; // Para colapsar/expandir el menú lateral
+        private bool _isMenuOpen = true;
         public bool IsMenuOpen
         {
             get => _isMenuOpen;
@@ -65,25 +79,31 @@ namespace WPF_PAR.MVVM.ViewModels
             DashboardViewModel dashboardVM,
             FamiliaViewModel familiaVM,
             ClientesViewModel clientesVM,
-            SettingsViewModel settingsVM, INotificationService notificationService)
+            SettingsViewModel settingsVM,
+            INotificationService notificationService)
         {
             GlobalFilters = filterService;
             DashboardVM = dashboardVM;
             FamiliaVM = familiaVM;
             ClientesVM = clientesVM;
             SettingsVM = settingsVM;
-
-            // Obtenemos lista para el Combo Global (si se usa en MainView)
             ListaSucursales = filterService.ListaSucursales;
 
-            // -----------------------------------------------------------
-            // CONFIGURACIÓN DE COMANDOS (AQUÍ ESTÁ EL CAMBIO)
-            // -----------------------------------------------------------
+            // Cargar datos de sesión
+            if ( Session.UsuarioActual != null )
+            {
+                UserName = Session.UsuarioActual.NombreCompleto;
+                UserRol = Session.UsuarioActual.Rol;
+            }
+            else
+            {
+                UserName = "Usuario";
+                UserRol = "Invitado";
+            }
 
-            // 1. Dashboard
+            // Comandos
             DashboardViewCommand = new RelayCommand(o => CurrentView = DashboardVM);
 
-            // 2. Familias (Ya lo tenías bien: carga al entrar)
             FamiliaViewCommand = new RelayCommand(o =>
             {
                 CurrentView = FamiliaVM;
@@ -97,19 +117,14 @@ namespace WPF_PAR.MVVM.ViewModels
                 ClientesVM.CargarDatosIniciales();
             });
 
-            // 4. Configuración
             SettingsViewCommand = new RelayCommand(o => CurrentView = SettingsVM);
 
-            // 5. Navegación Específica (Desde menú lateral tipo "Arquitectónica")
             NavegarLineaCommand = new RelayCommand(parametro =>
             {
                 if ( parametro is string linea )
                 {
                     CurrentView = FamiliaVM;
                     FamiliaVM.CargarPorLinea(linea);
-
-                    // Opcional: Cerrar menú en móviles o pantallas chicas
-                    // IsMenuOpen = false; 
                 }
             });
 
@@ -119,8 +134,10 @@ namespace WPF_PAR.MVVM.ViewModels
             {
                 MessageQueue = servicioConcreto.MessageQueue;
             }
-            // VISTA INICIAL
+
+            // Vista Inicial
             CurrentView = DashboardVM;
         }
+
     }
 }

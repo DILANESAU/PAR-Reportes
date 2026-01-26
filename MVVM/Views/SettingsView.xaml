@@ -15,7 +15,7 @@
 
             <WrapPanel Orientation="Horizontal">
 
-                <materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="450" Height="180" Margin="0,0,30,30">
+                <!--<materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="450" Height="180" Margin="0,0,30,30">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -41,7 +41,7 @@
                             <ToggleButton Grid.Column="1" IsChecked="{Binding IsDarkMode}" Style="{StaticResource MaterialDesignSwitchToggleButton}" Height="30" Width="60"/>
                         </Grid>
                     </Grid>
-                </materialDesign:Card>
+                </materialDesign:Card>-->
 
                 <materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="450" Height="180" Margin="0,0,30,30">
                     <Grid>

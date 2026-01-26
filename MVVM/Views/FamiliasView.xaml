@@ -271,7 +271,7 @@
                                                     <RowDefinition Height="*"/>
                                                 </Grid.RowDefinitions>
                                                 <TextBlock Text="{Binding TituloGraficoPastel}" FontWeight="Bold" Opacity="0.6" HorizontalAlignment="Center"/>
-                                                <lvc:PieChart Grid.Row="1" Series="{Binding SeriesPastelDinero}" LegendPosition="Right" TooltipPosition="Center" AnimationsSpeed="0:0:0.3"/>
+                                                <lvc:PieChart Grid.Row="1" Series="{Binding SeriesPastelDinero}" LegendPosition="Right" TooltipPosition="Center" AnimationsSpeed="0:0:0.3" LegendTextSize="12"/>
                                             </Grid>
                                         </materialDesign:Card>
 
@@ -282,7 +282,7 @@
                                                     <RowDefinition Height="*"/>
                                                 </Grid.RowDefinitions>
                                                 <TextBlock Text="Top Volumen (Litros)" FontWeight="Bold" Opacity="0.6" HorizontalAlignment="Center"/>
-                                                <lvc:PieChart Grid.Row="1" Series="{Binding SeriesPastelLitros}" LegendPosition="Right" TooltipPosition="Center" AnimationsSpeed="0:0:0.3"/>
+                                                <lvc:PieChart Grid.Row="1" Series="{Binding SeriesPastelLitros}" LegendPosition="Right" TooltipPosition="Center" AnimationsSpeed="0:0:0.3" LegendTextSize="12"/>
                                             </Grid>
                                         </materialDesign:Card>
                                     </Grid>
@@ -295,10 +295,16 @@
                                             </Grid.RowDefinitions>
 
                                             <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,10,10">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,15,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="Excluir Blancos" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12" Opacity="0.7"/>
+                                                    <ToggleButton IsChecked="{Binding ExcluirBlancos}" 
+                                                        Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                                                        ToolTip="Ocultar productos blancos para analizar colores"/>
+                                                </StackPanel>
                                                 <TextBlock Text="Mostrar Top:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold" Opacity="0.6"/>
                                                 <ComboBox ItemsSource="{Binding OpcionesTop}" SelectedItem="{Binding TopSeleccionado}"
-                  Style="{StaticResource MaterialDesignOutlinedComboBox}" Width="80"
-                  materialDesign:TextFieldAssist.TextFieldCornerRadius="4"/>
+                                                    Style="{StaticResource MaterialDesignOutlinedComboBox}" Width="80"
+                                                      materialDesign:TextFieldAssist.TextFieldCornerRadius="4"/>
                                             </StackPanel>
 
                                             <Grid Grid.Row="1" MinHeight="{Binding AlturaGraficaDinamica}">

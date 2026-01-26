@@ -50,7 +50,7 @@ namespace WPF_PAR.Services
             }
 
             var topProductos = datos
-                .GroupBy(x => x.Descripcion) // Nota: Aquí agrupamos por lo que venga en 'Descripcion' (sea Cliente o Producto)
+                .GroupBy(x => x.Descripcion)
                 .Select(g => new
                 {
                     NombreVisual = g.Key,
@@ -58,11 +58,9 @@ namespace WPF_PAR.Services
                     Litros = ( double ) g.Sum(v => v.LitrosTotales)
                 })
                 .OrderByDescending(x => verPorLitros ? x.Litros : x.Venta)
-                .Take(cantidadTop) // <--- USAMOS LA VARIABLE AQUÍ
+                .Take(cantidadTop)
                 .Reverse()
                 .ToList();
-
-            // ... (El resto del método sigue IGUAL: creación de series, ejes, colores, etc.)
 
             ISeries[] series;
             Axis[] ejeX;
@@ -76,9 +74,14 @@ namespace WPF_PAR.Services
                 Values = topProductos.Select(x => x.Litros).ToArray(),
                 Name = "Volumen",
                 Fill = new SolidColorPaint(SKColors.Orange),
+
                 DataLabelsPaint = new SolidColorPaint(SKColors.Black),
-                DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.End,
-                DataLabelsFormatter = p => $"{p.Model:N0} L"
+                DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Right,
+                DataLabelsFormatter = p => $"{p.Model:N0} L",
+                DataLabelsSize = 12,
+
+                // CORRECCIÓN: Usamos XToolTipLabelFormatter porque en RowSeries el valor está en X
+                XToolTipLabelFormatter = point => $"{point.Model:N0} L"
             }
                 };
                 ejeX = new Axis[] { new Axis { IsVisible = false, Labeler = v => $"{v:N0}" } };
@@ -92,9 +95,14 @@ namespace WPF_PAR.Services
                 Values = topProductos.Select(x => x.Venta).ToArray(),
                 Name = "Venta",
                 Fill = new SolidColorPaint(SKColors.DodgerBlue),
-                DataLabelsPaint = new SolidColorPaint(SKColors.White),
-                DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.End,
-                DataLabelsFormatter = p => $"{p.Model:C0}"
+
+                DataLabelsPaint = new SolidColorPaint(SKColors.Black),
+                DataLabelsPosition = LiveChartsCore.Measure.DataLabelsPosition.Right,
+                DataLabelsFormatter = p => $"{p.Model:C0}",
+                DataLabelsSize = 12,
+
+                // CORRECCIÓN: Usamos XToolTipLabelFormatter
+                XToolTipLabelFormatter = point => $"{point.Model:C0}"
             }
                 };
                 ejeX = new Axis[] { new Axis { IsVisible = false, Labeler = v => $"{v:C0}" } };

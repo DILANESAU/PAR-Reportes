@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:WPF_PAR"
              xmlns:core="clr-namespace:WPF_PAR.Core" 
+             xmlns:converters="clr-namespace:WPF_PAR.Core.Converters"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
     <Application.Resources>
         <ResourceDictionary>
@@ -109,7 +110,6 @@
                 <Setter Property="IsReadOnly" Value="True"/>
                 <Setter Property="CanUserAddRows" Value="False"/>
                 <Setter Property="SelectionMode" Value="Single"/>
-
                 <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}"/>
 
                 <Setter Property="ColumnHeaderStyle">
@@ -153,7 +153,9 @@
                 </Setter>
             </Style>
 
-            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <converters:BoolToVisConverter x:Key="BoolToVis"/>
+
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
 
         </ResourceDictionary>
     </Application.Resources>

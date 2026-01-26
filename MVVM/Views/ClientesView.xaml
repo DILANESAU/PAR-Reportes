@@ -6,6 +6,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
              xmlns:converters="clr-namespace:WPF_PAR.Core.Converters"
+             xmlns:core="clr-namespace:WPF_PAR.Core" 
              mc:Ignorable="d" 
              d:DesignHeight="800" d:DesignWidth="1200"
              TextElement.Foreground="{DynamicResource MaterialDesignBody}"
@@ -15,6 +16,8 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+
+        <core:BindingProxy x:Key="MyProxy" Data="{Binding}" />
     </UserControl.Resources>
 
     <Grid Margin="20">
@@ -100,10 +103,15 @@
                 <TextBlock Grid.Column="2" Text="AÑO ACTUAL" FontWeight="Bold" Opacity="0.5" TextAlignment="Right"/>
                 <TextBlock Grid.Column="3" Text="AÑO ANTERIOR" FontWeight="Bold" Opacity="0.5" TextAlignment="Right"/>
 
-                <TextBlock Grid.Column="4" Text="Q1" FontWeight="Bold" Opacity="0.5" TextAlignment="Right"
-                           Visibility="{Binding DataContext.VisibilityQ1, Source={x:Reference proxy}}"/>
-                <TextBlock Grid.Column="5" Text="Q2" FontWeight="Bold" Opacity="0.5" TextAlignment="Right"
-                           Visibility="{Binding DataContext.VisibilityQ2, Source={x:Reference proxy}}"/>
+                <TextBlock Grid.Column="4" Text="Q1" FontWeight="Bold" Opacity="0.5" TextAlignment="Right" Visibility="{Binding Data.VisibilityQ1, Source={StaticResource MyProxy}}"/>
+                <TextBlock Grid.Column="5" Text="Q2" FontWeight="Bold" Opacity="0.5" TextAlignment="Right" Visibility="{Binding Data.VisibilityQ2, Source={StaticResource MyProxy}}"/>
+                <TextBlock Grid.Column="6" Text="Q3" FontWeight="Bold" Opacity="0.5" TextAlignment="Right" Visibility="{Binding Data.VisibilityQ3, Source={StaticResource MyProxy}}"/>
+                <TextBlock Grid.Column="7" Text="Q4" FontWeight="Bold" Opacity="0.5" TextAlignment="Right" Visibility="{Binding Data.VisibilityQ4, Source={StaticResource MyProxy}}"/>
+
+                <TextBlock Grid.Column="4" Grid.ColumnSpan="2" Text="SEM 1" FontWeight="Bold" Opacity="0.8" TextAlignment="Center" Foreground="#E65100"
+                           Visibility="{Binding Data.VisibilityS1, Source={StaticResource MyProxy}}"/>
+                <TextBlock Grid.Column="6" Grid.ColumnSpan="2" Text="SEM 2" FontWeight="Bold" Opacity="0.8" TextAlignment="Center" Foreground="#E65100"
+                           Visibility="{Binding Data.VisibilityS2, Source={StaticResource MyProxy}}"/>
             </Grid>
 
             <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
@@ -125,7 +133,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Button Grid.Column="0" Style="{StaticResource MaterialDesignIconForegroundButton}" Height="30" Width="30"
-                                            Command="{Binding DataContext.VerDetalleCommand, Source={x:Reference proxy}}"
+                                            Command="{Binding DataContext.VerDetalleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}">
                                         <materialDesign:PackIcon Kind="EyeOutline"/>
                                     </Button>
@@ -143,16 +151,32 @@
                                                    Foreground="{Binding PorcentajeCrecimiento, Converter={StaticResource BoolToColorConverter}}"/>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Column="4" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                Visibility="{Binding DataContext.VisibilityQ1, Source={x:Reference proxy}}">
+                                    <StackPanel Grid.Column="4" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="{Binding DataContext.VisibilityQ1, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                         <TextBlock Text="{Binding VentaQ1Actual, StringFormat=C0}" FontWeight="Bold" Foreground="#1565C0" TextAlignment="Right"/>
                                         <TextBlock Text="{Binding LitrosQ1Actual, StringFormat={}{0:N0} L}" FontSize="10" Opacity="0.5" TextAlignment="Right"/>
                                     </StackPanel>
-
-                                    <StackPanel Grid.Column="5" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                Visibility="{Binding DataContext.VisibilityQ2, Source={x:Reference proxy}}">
+                                    <StackPanel Grid.Column="5" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="{Binding DataContext.VisibilityQ2, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                         <TextBlock Text="{Binding VentaQ2Actual, StringFormat=C0}" FontWeight="Bold" Foreground="#1565C0" TextAlignment="Right"/>
                                         <TextBlock Text="{Binding LitrosQ2Actual, StringFormat={}{0:N0} L}" FontSize="10" Opacity="0.5" TextAlignment="Right"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="6" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="{Binding DataContext.VisibilityQ3, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                        <TextBlock Text="{Binding VentaQ3Actual, StringFormat=C0}" FontWeight="Bold" Foreground="#1565C0" TextAlignment="Right"/>
+                                        <TextBlock Text="{Binding LitrosQ3Actual, StringFormat={}{0:N0} L}" FontSize="10" Opacity="0.5" TextAlignment="Right"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="7" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="{Binding DataContext.VisibilityQ4, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                        <TextBlock Text="{Binding VentaQ4Actual, StringFormat=C0}" FontWeight="Bold" Foreground="#1565C0" TextAlignment="Right"/>
+                                        <TextBlock Text="{Binding LitrosQ4Actual, StringFormat={}{0:N0} L}" FontSize="10" Opacity="0.5" TextAlignment="Right"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="4" Grid.ColumnSpan="2" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,20,0"
+                                                Visibility="{Binding DataContext.VisibilityS1, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                        <TextBlock Text="{Binding VentaS1Actual, StringFormat=C0}" FontWeight="Bold" Foreground="#E65100" TextAlignment="Right" FontSize="14"/>
+                                        <TextBlock Text="{Binding LitrosS1Actual, StringFormat={}{0:N0} L}" FontSize="11" Opacity="0.6" TextAlignment="Right"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="6" Grid.ColumnSpan="2" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,20,0"
+                                                Visibility="{Binding DataContext.VisibilityS2, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                        <TextBlock Text="{Binding VentaS2Actual, StringFormat=C0}" FontWeight="Bold" Foreground="#E65100" TextAlignment="Right" FontSize="14"/>
+                                        <TextBlock Text="{Binding LitrosS2Actual, StringFormat={}{0:N0} L}" FontSize="11" Opacity="0.6" TextAlignment="Right"/>
                                     </StackPanel>
 
                                 </Grid>
@@ -163,16 +187,113 @@
             </ScrollViewer>
         </Grid>
 
-        <Grid Visibility="{Binding EnModoDetalle, Converter={StaticResource BoolToVis}}">
-            <Grid VerticalAlignment="Top" Margin="0,0,0,20">
-                <Button Command="{Binding VolverListaCommand}" HorizontalAlignment="Left" Style="{StaticResource MaterialDesignFlatButton}">
+        <Grid Visibility="{Binding EnModoDetalle, Converter={StaticResource BoolToVis}}" Background="White">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Command="{Binding VolverListaCommand}" Style="{StaticResource MaterialDesignOutlinedButton}">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ArrowLeft" Margin="0,0,5,0"/>
-                        <TextBlock Text="REGRESAR A LA LISTA"/>
+                        <materialDesign:PackIcon Kind="ArrowLeft" Margin="0,0,8,0"/>
+                        <TextBlock Text="REGRESAR"/>
                     </StackPanel>
                 </Button>
+
+                <StackPanel Grid.Column="1" Margin="20,0">
+                    <TextBlock Text="{Binding ClienteSeleccionado.Nombre}" Style="{StaticResource PageTitleStyle}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="Análisis profundo de rendimiento" Style="{StaticResource PageSubtitleStyle}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Ver gráfica:" VerticalAlignment="Center" Margin="0,0,10,0" Opacity="0.6"/>
+                    <ListBox ItemsSource="{Binding ModosVista}" SelectedItem="{Binding ModoSeleccionado}"
+                             Style="{StaticResource MaterialDesignChoiceChipPrimaryListBox}"/>
+                </StackPanel>
             </Grid>
 
+            <UniformGrid Grid.Row="1" Rows="1" Margin="0,0,0,20">
+                <materialDesign:Card Margin="0,0,10,0" Padding="15" UniformCornerRadius="8">
+                    <StackPanel>
+                        <TextBlock Text="TICKET PROMEDIO" FontSize="10" Opacity="0.5" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding KpisDetalle.TicketPromedio, StringFormat=C2}" FontSize="20" FontWeight="Bold" Foreground="#2E7D32"/>
+                    </StackPanel>
+                </materialDesign:Card>
+                <materialDesign:Card Margin="10,0,10,0" Padding="15" UniformCornerRadius="8">
+                    <StackPanel>
+                        <TextBlock Text="FRECUENCIA COMPRA" FontSize="10" Opacity="0.5" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding KpisDetalle.FrecuenciaCompra, StringFormat={}{0} Facturas}" FontSize="20" FontWeight="Bold" Foreground="#1565C0"/>
+                    </StackPanel>
+                </materialDesign:Card>
+                <materialDesign:Card Margin="10,0,0,0" Padding="15" UniformCornerRadius="8">
+                    <StackPanel>
+                        <TextBlock Text="ÚLTIMA COMPRA" FontSize="10" Opacity="0.5" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding KpisDetalle.UltimaCompra, StringFormat=dd/MMM/yyyy}" FontSize="20" FontWeight="Bold" Foreground="#E65100"/>
+                    </StackPanel>
+                </materialDesign:Card>
+            </UniformGrid>
+
+            <materialDesign:Card Grid.Row="2" Margin="0,0,0,20" Padding="15" UniformCornerRadius="8" Height="300">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Tendencia de Ventas (Dinero)" FontWeight="Bold" Opacity="0.6"/>
+                    <lvc:CartesianChart Grid.Row="1" Series="{Binding SeriesGrafica}" XAxes="{Binding EjeXGrafica}" YAxes="{Binding EjeYGrafica}" ZoomMode="X"/>
+                </Grid>
+            </materialDesign:Card>
+
+            <Grid Grid.Row="3" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <materialDesign:Card Grid.Column="0" UniformCornerRadius="8" Padding="0">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Background="#FFEBEE" Padding="10">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="TrendingDown" Foreground="#D32F2F" Margin="0,0,10,0"/>
+                                <TextBlock Text="Productos en Declive (Top 10)" Foreground="#D32F2F" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Border>
+                        <DataGrid ItemsSource="{Binding ProductosEnDeclive}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" materialDesign:DataGridAssist.CellPadding="10,5">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="PRODUCTO" Binding="{Binding Descripcion}" Width="*" ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}"/>
+                                <DataGridTextColumn Header="DIFERENCIA" Binding="{Binding Diferencia, StringFormat=C0}" FontWeight="Bold" Foreground="#D32F2F"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </materialDesign:Card>
+
+                <materialDesign:Card Grid.Column="2" UniformCornerRadius="8" Padding="0">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Background="#E8F5E9" Padding="10">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="TrendingUp" Foreground="#388E3C" Margin="0,0,10,0"/>
+                                <TextBlock Text="Productos en Aumento (Top 10)" Foreground="#388E3C" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Border>
+                        <DataGrid ItemsSource="{Binding ProductosEnAumento}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" materialDesign:DataGridAssist.CellPadding="10,5">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="PRODUCTO" Binding="{Binding Descripcion}" Width="*" ElementStyle="{StaticResource MaterialDesignDataGridTextColumnStyle}"/>
+                                <DataGridTextColumn Header="DIFERENCIA" Binding="{Binding Diferencia, StringFormat=+{0:C0}}" FontWeight="Bold" Foreground="#388E3C"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </materialDesign:Card>
+            </Grid>
         </Grid>
 
         <Grid Background="#80FFFFFF" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
