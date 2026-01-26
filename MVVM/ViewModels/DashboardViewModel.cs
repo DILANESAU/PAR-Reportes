@@ -430,8 +430,10 @@ namespace WPF_PAR.MVVM.ViewModels
 
             // C. ÚLTIMOS CLIENTES
             var ultimos = datos
-                .OrderByDescending(x => x.FechaEmision)
-                .Take(5)
+                .OrderByDescending(x => x.FechaEmision) // 1. Ordenamos por fecha (lo más nuevo arriba)
+                .GroupBy(x => x.Cliente)              // 2. Agrupamos por Cliente
+                .Select(g => g.First())               // 3. Tomamos SOLO la venta más reciente de ese cliente
+                .Take(5)                              // 4. Ahora sí, tomamos los 5 mejores
                 .Select(x => new ClienteRecienteItem
                 {
                     Nombre = string.IsNullOrEmpty(x.Cliente) ? "Público General" : x.Cliente,

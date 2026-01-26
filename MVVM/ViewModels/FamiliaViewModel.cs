@@ -7,6 +7,7 @@ using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -53,6 +54,15 @@ namespace WPF_PAR.MVVM.ViewModels
         public string TituloBarrasClientes { get; set; } = "Top Clientes";
         public string TituloBarrasProductos { get; set; } = "Top Productos";
 
+        private decimal _cacheVentaGlobal;
+        private double _cacheLitrosGlobal;
+        private string _tituloReporteCard = "📥 REPORTE COMPLETO"; // Texto dinámico del botón
+
+        public string TituloReporteCard
+        {
+            get => _tituloReporteCard;
+            set { _tituloReporteCard = value; OnPropertyChanged(); }
+        }
         public ISeries[] SeriesBarrasClientes { get; set; }
         public Axis[] EjeXBarrasClientes { get; set; }
         public Axis[] EjeYBarrasClientes { get; set; }
@@ -171,13 +181,37 @@ namespace WPF_PAR.MVVM.ViewModels
             ActualizarCommand = new RelayCommand(o => EjecutarReporte());
             OrdenarVentaCommand = new RelayCommand(o => AplicarOrden("VENTA"));
             OrdenarNombreCommand = new RelayCommand(o => AplicarOrden("NOMBRE"));
-            RegresarCommand = new RelayCommand(o => VerResumen = true);
-            ExportarExcelCommand = new RelayCommand(o => GenerarReporteExcel(false));
-            ExportarGlobalCommand = new RelayCommand(o => GenerarReporteExcel(true));
+            RegresarCommand = new RelayCommand(o => RestaurarVistaGeneral());
+            ExportarGlobalCommand = new RelayCommand(o =>
+            {
+                if ( VerResumen )
+                {
+                    // Si estoy en la vista principal -> Reporte Global (CSV con todas las ventas)
+                    GenerarReporteExcel(true);
+                }
+                else
+                {
+                    // Si estoy dentro de una familia -> Reporte Detallado (CSV solo de esa familia)
+                    GenerarReporteExcel(false);
+                }
+            });
             VerDetalleCommand = new RelayCommand(param => { if ( param is string familia ) CargarDetalle(familia); });
             CambiarPeriodoGraficoCommand = new RelayCommand(param => { if ( param is string periodo ) GenerarDesglosePorPeriodo(periodo); });
 
             Filters.OnFiltrosCambiados += EjecutarReporte;
+        }
+
+        private void RestaurarVistaGeneral()
+        {
+            VerResumen = true;
+
+            // RESTAURAR LOS VALORES GLOBALES DESDE LA CACHÉ
+            GranTotalVenta = _cacheVentaGlobal;
+            GranTotalLitros = _cacheLitrosGlobal;
+            TituloReporteCard = "📥 REPORTE GLOBAL";
+
+            OnPropertyChanged(nameof(GranTotalVenta));
+            OnPropertyChanged(nameof(GranTotalLitros));
         }
 
         private void ActualizarColoresGraficos()
@@ -282,15 +316,25 @@ namespace WPF_PAR.MVVM.ViewModels
         private void GenerarResumenVisual()
         {
             var (arqui, espe) = _familiaLogic.CalcularResumenGlobal(_ventasProcesadas);
-            GranTotalVenta = _ventasProcesadas.Sum(x => x.TotalVenta);
-            GranTotalLitros = _ventasProcesadas.Sum(x => x.LitrosTotales);
 
+            // 1. Calculamos los globales REALES
+            _cacheVentaGlobal = _ventasProcesadas.Sum(x => x.TotalVenta);
+            _cacheLitrosGlobal = _ventasProcesadas.Sum(x => x.LitrosTotales);
+
+            // 2. Los asignamos a la vista
+            GranTotalVenta = _cacheVentaGlobal;
+            GranTotalLitros = _cacheLitrosGlobal;
+            TituloReporteCard = "📥 REPORTE GLOBAL"; // Texto por defecto
+
+            // ... resto del código (asignar TarjetasFamilias, etc.)
             IEnumerable<FamiliaResumenModel> resultado;
             if ( _lineaActual == "Arquitectonica" ) resultado = arqui;
             else if ( _lineaActual == "Especializada" ) resultado = espe;
             else resultado = arqui.Concat(espe);
 
             TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(resultado);
+
+            // Notificar cambios
             OnPropertyChanged(nameof(GranTotalVenta));
             OnPropertyChanged(nameof(GranTotalLitros));
             OnPropertyChanged(nameof(TarjetasFamilias));
@@ -300,12 +344,25 @@ namespace WPF_PAR.MVVM.ViewModels
         {
             TituloDetalle = familia;
             _datosFamiliaActual = _ventasProcesadas.Where(x => x.Familia == familia).ToList();
+
+            // --- CAMBIO CLAVE: Actualizar los KPIs superiores con datos de LA FAMILIA ---
+            GranTotalVenta = _datosFamiliaActual.Sum(x => x.TotalVenta);
+            GranTotalLitros = _datosFamiliaActual.Sum(x => x.LitrosTotales);
+            TituloReporteCard = "📥 DESCARGAR DETALLE"; // Cambiamos el texto del botón
+
+            // Notificar a la vista para que los números cambien
+            OnPropertyChanged(nameof(GranTotalVenta));
+            OnPropertyChanged(nameof(GranTotalLitros));
+            // --------------------------------------------------------------------------
+
             SubLineasDisponibles.Clear();
             SubLineasDisponibles.Add("TODAS");
             var lineas = _datosFamiliaActual.Select(x => x.Linea).Distinct().OrderBy(x => x).ToList();
             foreach ( var l in lineas ) SubLineasDisponibles.Add(l);
+
             SubLineaSeleccionada = "TODAS";
             OnPropertyChanged(nameof(TituloDetalle));
+
             GenerarDesglosePorPeriodo("ANUAL");
             VerResumen = false;
         }
@@ -454,7 +511,34 @@ namespace WPF_PAR.MVVM.ViewModels
 
         private void AplicarOrden(string criterio) { if ( TarjetasFamilias != null ) { TarjetasFamilias = new ObservableCollection<FamiliaResumenModel>(_familiaLogic.OrdenarTarjetas(TarjetasFamilias.ToList(), criterio)); OnPropertyChanged(nameof(TarjetasFamilias)); } }
         private void GenerarDesglosePorPeriodo(string periodo) { if ( _datosAnualesCache != null && _datosAnualesCache.Any() ) { var datos = _datosAnualesCache.Where(x => x.Familia == TituloDetalle).ToList(); var g = _chartService.GenerarTendenciaLineas(datos, periodo); SeriesComportamientoLineas = g.Series; EjeXMensual = g.EjesX; OnPropertyChanged(nameof(SeriesComportamientoLineas)); OnPropertyChanged(nameof(EjeXMensual)); var l = _familiaLogic.CalcularDesgloseClientes(datos, periodo == "ANUAL" ? "TRIMESTRAL" : periodo); ListaDesglose = new ObservableCollection<SubLineaPerformanceModel>(l); OnPropertyChanged(nameof(ListaDesglose)); } }
-        private async void GenerarReporteExcel(bool g) { var d = g ? _ventasProcesadas : DetalleVentas?.ToList(); if ( d == null || d.Count == 0 ) return; string p = _dialogService.ShowSaveFileDialog("CSV|*.csv", $"Reporte_{DateTime.Now:yyyyMMdd}.csv"); if ( !string.IsNullOrEmpty(p) ) { IsLoading = true; await Task.Run(() => File.WriteAllText(p, _familiaLogic.GenerarContenidoCSV(d), Encoding.UTF8)); IsLoading = false; _notificationService.ShowSuccess("Guardado"); } }
+        // En FamiliaViewModel.cs
+
+        private async void GenerarReporteExcel(bool esGlobal)
+        {
+            var datosParaExportar = esGlobal ? _ventasProcesadas : DetalleVentas?.ToList();
+
+            if ( datosParaExportar == null || !datosParaExportar.Any() )
+            {
+                _notificationService.ShowInfo("No hay datos para exportar.");
+                return;
+            }
+
+            // Cambiamos la extensión a .xlsx
+            string path = _dialogService.ShowSaveFileDialog("Excel|*.xlsx", $"Reporte_{DateTime.Now:yyyyMMdd}.xlsx");
+
+            if ( !string.IsNullOrEmpty(path) )
+            {
+                IsLoading = true;
+                await Task.Run(() =>
+                {
+                    // Usamos el nuevo servicio
+                    var exporter = new ExportService();
+                    exporter.ExportarExcelVentas(datosParaExportar, path);
+                });
+
+                IsLoading = false;
+            }
+        }
         private void FiltrarTabla() { if ( DetalleVentas != null ) { var v = CollectionViewSource.GetDefaultView(DetalleVentas); if ( string.IsNullOrWhiteSpace(TextoBusqueda) ) v.Filter = null; else { string t = TextoBusqueda.ToUpper(); v.Filter = o => { if ( o is VentaReporteModel m ) return ( m.Cliente?.ToUpper().Contains(t) ?? false ) || ( m.Descripcion?.ToUpper().Contains(t) ?? false ); return false; }; } } }
     }
 }

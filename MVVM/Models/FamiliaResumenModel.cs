@@ -13,5 +13,7 @@ namespace WPF_PAR.MVVM.Models
         public string ColorFondo { get; set; }
         public string ProductoEstrella { get; set; }
         public string ColorTexto { get; set; }
+        public double PorcentajeParticipacion { get; set; } // Para la barra de progreso y el texto %
+        public double LitrosTotal { get; set; }
     }
 }

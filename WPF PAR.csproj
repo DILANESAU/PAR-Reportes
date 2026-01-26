@@ -23,7 +23,7 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
     <Content Include="Assets\Productos.csv">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Sucursales.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -35,6 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="LiveChartsCore" Version="2.0.0-rc6.1" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView" Version="2.0.0-rc6.1" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc6.1" />
@@ -42,6 +43,7 @@
     <PackageReference Include="MaterialDesignThemes" Version="5.3.1-ci1190" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.0-preview3.25342.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
+    <PackageReference Include="QuestPDF" Version="2025.12.3" />
     <PackageReference Include="SkiaSharp" Version="3.119.2-preview.1" />
     <PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2-preview.1" />
     <PackageReference Include="System.Data.SqlClient" Version="4.9.0" />

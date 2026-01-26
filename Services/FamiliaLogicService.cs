@@ -26,49 +26,66 @@ namespace WPF_PAR.Services
             var arq = new List<FamiliaResumenModel>();
             var esp = new List<FamiliaResumenModel>();
 
-            // CORRECCIÓN: No nos salimos si es null/vacío. 
-            // En su lugar, inicializamos 'grupos' como una lista vacía para que el código siga fluyendo.
+            // 1. CALCULAR GRAN TOTAL (Vital para sacar los porcentajes)
+            decimal granTotal = ventas?.Sum(x => x.TotalVenta) ?? 1;
+            if ( granTotal == 0 ) granTotal = 1; // Protección contra división por cero
+
             var grupos = ventas?.GroupBy(x => x.Familia).ToList() ?? new List<IGrouping<string, VentaReporteModel>>();
 
-            // Procesar Arquitectónica (Ahora SIEMPRE entra aquí y crea las tarjetas en 0)
+            // Procesar Arquitectónica
             foreach ( var nombre in ConfiguracionLineas.Arquitectonica )
             {
-                arq.Add(CrearTarjeta(nombre, grupos));
+                // Pasamos 'granTotal' al método CrearTarjeta
+                arq.Add(CrearTarjeta(nombre, grupos, granTotal));
             }
 
             // Procesar Especializada
             foreach ( var nombre in ConfiguracionLineas.Especializada )
             {
-                esp.Add(CrearTarjeta(nombre, grupos));
+                esp.Add(CrearTarjeta(nombre, grupos, granTotal));
             }
 
             return (arq, esp);
         }
 
-        private FamiliaResumenModel CrearTarjeta(string nombre, List<IGrouping<string, VentaReporteModel>> grupos)
+        private FamiliaResumenModel CrearTarjeta(string nombre, List<IGrouping<string, VentaReporteModel>> grupos, decimal granTotalGlobal)
         {
             var grupo = grupos.FirstOrDefault(g => g.Key == nombre);
             string color = _businessLogic.ObtenerColorFamilia(nombre);
+
             var modelo = new FamiliaResumenModel
             {
                 NombreFamilia = nombre,
                 ColorFondo = color,
                 ColorTexto = ColorHelper.ObtenerColorTextto(color),
                 VentaTotal = 0,
-                LitrosTotales = 0,
+                LitrosTotal = 0, // <--- OJO: Singular, como en el Modelo
+                PorcentajeParticipacion = 0, // <--- Inicializamos en 0
                 ProductoEstrella = "---"
             };
 
             if ( grupo != null )
             {
+                // 1. Sumas básicas
                 modelo.VentaTotal = grupo.Sum(x => x.TotalVenta);
-                modelo.LitrosTotales = grupo.Sum(x => x.LitrosTotales);
 
+                // 2. CORRECCIÓN LITROS: Usamos la propiedad correcta del Modelo (Singular)
+                // Asegúrate de que x.LitrosTotales (del reporte SQL) sea double o castéalo
+                modelo.LitrosTotal = ( double ) grupo.Sum(x => x.LitrosTotales);
+
+                // 3. CÁLCULO DE PORCENTAJE (Nueva lógica)
+                if ( granTotalGlobal > 0 )
+                {
+                    modelo.PorcentajeParticipacion = ( double ) ( modelo.VentaTotal / granTotalGlobal );
+                }
+
+                // 4. Producto Estrella
                 var top = grupo.GroupBy(g => g.Descripcion)
                                .OrderByDescending(x => x.Sum(v => v.LitrosTotales))
                                .FirstOrDefault();
                 modelo.ProductoEstrella = top?.Key ?? "---";
             }
+
             return modelo;
         }
 

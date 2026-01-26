@@ -49,6 +49,12 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Agregado: Definición del recurso faltante para evitar el error XDG0010 -->
+        <Style x:Key="MaterialDesignSnackbarActionMidButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -157,6 +163,7 @@
                                 FontSize="11" 
                                 Opacity="0.6"
                                 Foreground="{DynamicResource MaterialDesignBody}"/>
+
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
@@ -167,14 +174,25 @@
 
             <materialDesign:DialogHost Identifier="RootDialog">
                 <Grid>
-                    <materialDesign:TransitioningContent OpeningEffect="{materialDesign:TransitionEffect Kind=FadeIn}">
-                        <ContentControl Content="{Binding CurrentView}" Margin="20,0,20,20"/>
+
+                    <materialDesign:TransitioningContent 
+                        Content="{Binding CurrentView}"
+                        Margin="20,0,20,20">
+
+                        <materialDesign:TransitioningContent.OpeningEffect>
+                            <materialDesign:TransitionEffect Kind="SlideInFromRight" Duration="0:0:0.4" />
+                        </materialDesign:TransitioningContent.OpeningEffect>
+
                     </materialDesign:TransitioningContent>
 
-                    <materialDesign:Snackbar x:Name="MainSnackbar"
-                                             MessageQueue="{Binding MessageQueue}" 
-                                             HorizontalAlignment="Center" 
-                                             Margin="0,0,0,20"/>
+                    <materialDesign:Snackbar
+                        MessageQueue="{Binding MessageQueue}"
+                        HorizontalAlignment="Center" 
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,0,20"
+                        Background="#333333"
+                        Foreground="White"
+                        ActionButtonStyle="{StaticResource MaterialDesignSnackbarActionMidButton}" />
                 </Grid>
             </materialDesign:DialogHost>
         </DockPanel>

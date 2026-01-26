@@ -41,6 +41,17 @@
                 </DataTemplate.Triggers>
             </DataTemplate>
 
+            <Style x:Key="LoadingOverlayStyle" TargetType="Grid">
+                <Setter Property="Background" Value="#CCFFFFFF"/>
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Setter Property="ZIndex" Value="999"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                        <Setter Property="Visibility" Value="Visible"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
             <Style x:Key="PageTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="28"/>
                 <Setter Property="FontWeight" Value="Bold"/>

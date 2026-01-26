@@ -64,14 +64,11 @@ namespace WPF_PAR
             var mainWindow = Services.GetRequiredService<MainWindow>();
             var mainViewModel = Services.GetRequiredService<MainViewModel>();
 
+            // 1. Asignar el cerebro (ViewModel) a la vista
             mainWindow.DataContext = mainViewModel;
 
-            var notifService = Services.GetRequiredService<INotificationService>() as NotificationService;
-
-            if ( notifService != null )
-            {
-                mainWindow.MainSnackbar.MessageQueue = notifService.MessageQueue;
-            }
+            // 2. ¡Listo! El Binding en el XAML se encargará de conectar el Snackbar
+            // Ya no necesitas las líneas del 'notifService' ni 'mainWindow.MainSnackbar...'
 
             mainWindow.Show();
         }

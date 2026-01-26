@@ -7,6 +7,7 @@ using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -25,6 +26,8 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly ReportesService _reportesService;
         private readonly ClientesLogicService _logicService;
         private readonly IDialogService _dialogService;
+        private readonly INotificationService _notificationService;
+        private readonly CatalogoService _catalogoService;
         public FilterService Filters { get; }
 
         // --- FILTROS ---
@@ -162,17 +165,19 @@ namespace WPF_PAR.MVVM.ViewModels
         public RelayCommand ActualizarCommand { get; set; }
         public RelayCommand VerDetalleCommand { get; set; }
         public RelayCommand VolverListaCommand { get; set; }
+        public RelayCommand ImprimirReporteCommand { get; set; }
 
         // =============================================================================
         // CONSTRUCTOR
         // =============================================================================
-        public ClientesViewModel(ReportesService reportesService, FilterService filterService, IDialogService dialogService)
+        public ClientesViewModel(ReportesService reportesService, FilterService filterService, IDialogService dialogService, INotificationService notificationService, BusinessLogicService businessLogic)
         {
             _reportesService = reportesService;
             Filters = filterService;
             _dialogService = dialogService;
+            _notificationService = notificationService;
             _logicService = new ClientesLogicService();
-
+            _catalogoService = new CatalogoService(businessLogic);
             // Inicializar años (Ej: 2026, 2025, 2024, 2023)
             int year = DateTime.Now.Year;
             AñosDisponibles = new ObservableCollection<int> { year, year - 1, year - 2, year - 3 };
@@ -180,6 +185,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
             // Configurar comandos
             ActualizarCommand = new RelayCommand(o => CargarDatosIniciales());
+            ImprimirReporteCommand = new RelayCommand(o => GenerarPdfCliente());
             Filters.OnFiltrosCambiados += CargarDatosIniciales;
 
             VerDetalleCommand = new RelayCommand(param =>
@@ -198,6 +204,7 @@ namespace WPF_PAR.MVVM.ViewModels
                 KpisDetalle = null;
                 EnModoDetalle = false;
             });
+            _notificationService = notificationService;
         }
 
         // =============================================================================
@@ -277,20 +284,71 @@ namespace WPF_PAR.MVVM.ViewModels
             }
         }
 
+        private async void GenerarPdfCliente()
+        {
+            if ( ClienteSeleccionado == null ) return;
+
+            string path = _dialogService.ShowSaveFileDialog("PDF Document|*.pdf", $"Reporte_{ClienteSeleccionado.Nombre}.pdf");
+
+            if ( !string.IsNullOrEmpty(path) )
+            {
+                IsLoading = true;
+
+                // Preparamos las listas auxiliares para evitar errores si son null
+                var listAumento = ProductosEnAumento?.ToList() ?? new List<ProductoAnalisisModel>();
+                var listDeclive = ProductosEnDeclive?.ToList() ?? new List<ProductoAnalisisModel>();
+
+                await Task.Run(async () =>
+                {
+                    // 1. TRAER DATOS CRUDOS DE SQL (Solo traen Cantidad, no Litros)
+                    var fin = DateTime.Now;
+                    var inicio = fin.AddYears(-1);
+                    var ventasRaw = await _reportesService.ObtenerVentasBrutasRango(Filters.SucursalId, inicio, fin);
+
+                    // 2. FILTRAR POR CLIENTE
+                    var movimientos = ventasRaw
+                        .Where(x => x.Cliente == ClienteSeleccionado.Nombre)
+                        .OrderByDescending(x => x.FechaEmision)
+                        .Take(100)
+                        .ToList();
+
+                    // 3. ENRIQUECER DATOS (EL PASO MÁGICO ✨)
+                    foreach ( var venta in movimientos )
+                    {
+                        // Preguntamos al catálogo: "¿Qué es este artículo?"
+                        var info = _catalogoService.ObtenerInfo(venta.Articulo);
+
+                        // A) Corregimos la Descripción (para que no salga el código feo)
+                        venta.Descripcion = info.Descripcion;
+
+                        venta.LitrosUnitarios = ( double ) info.Litros;
+
+                        // C) Opcional: Si tu reporte usa la propiedad explícita 'LitrosTotal', llénala manual:
+                        venta.LitrosTotal = venta.Cantidad * ( double ) info.Litros;
+                    }
+
+                    // 4. GENERAR PDF (Ahora sí lleva datos)
+                    var exporter = new ExportService();
+                    exporter.ExportarPdfCliente(
+                        ClienteSeleccionado,
+                        KpisDetalle,
+                        movimientos,
+                        listAumento,
+                        listDeclive,
+                        path
+                    );
+                });
+
+                IsLoading = false;
+
+                // Abrir archivo
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true }); } catch { }
+            }
+        }
         private (DateTime Inicio, DateTime Fin) ObtenerRangoFechas()
         {
             int anio = AnioSeleccionado;
             int mes = DateTime.Now.Month;
-
-            // Si estamos viendo un año pasado, asumimos el periodo completo (o el último Q)
-            // Para simplificar, si es año pasado, comparamos años completos en modo Anual,
-            // o el semestre/trimestre FINAL.
-            // PERO lo más útil suele ser "Lo que va del año" (YTD).
-
-            // LÓGICA:
-            // Anual -> Todo el año
-            // Semestral -> El semestre ACTUAL (o el 1 si estamos en Ene-Jun)
-            // Trimestral -> El trimestre ACTUAL
 
             if ( ModoSeleccionado == "Anual" )
             {
@@ -299,9 +357,7 @@ namespace WPF_PAR.MVVM.ViewModels
 
             if ( ModoSeleccionado == "Semestral" )
             {
-                // Si estamos en el segundo semestre (Julio+), mostramos S2. Si no, S1.
-                // Si es año pasado, mostramos S2 (todo el año casi).
-                // Ajusta esto a tu gusto. Aquí pongo: Si mes > 6 -> S2, sino S1.
+
                 bool esS2 = mes > 6;
                 return esS2
                     ? (new DateTime(anio, 7, 1), new DateTime(anio, 12, 31))
