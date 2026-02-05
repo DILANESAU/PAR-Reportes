@@ -140,7 +140,7 @@ namespace WPF_PAR.MVVM.ViewModels
             ActualizarCommand = new RelayCommand(o => CargarDatos());
             ConfigurarEjesIniciales();
 
-            CargarDatos();
+            //CargarDatos();
         }
 
         private void ConfigurarEjesIniciales()
@@ -151,7 +151,23 @@ namespace WPF_PAR.MVVM.ViewModels
             EjeX = new Axis[] { new Axis { LabelsPaint = new SolidColorPaint(colorTexto) } };
             EjeY = new Axis[] { new Axis { Labeler = v => $"{v:C0}", LabelsPaint = new SolidColorPaint(colorTexto) } };
         }
+        public void CargarDatosIniciales()
+        {
+            // 1. Cargar Sucursales primero
+            CargarListaSucursales();
 
+            // 2. Seleccionar la default (esto disparará CargarDatos gracias al Setter)
+            if ( Sucursales.Any() )
+            {
+                // Logica para seleccionar la default guardada en settings
+                int guardada = Properties.Settings.Default.SucursalDefaultId;
+                var encontrada = Sucursales.FirstOrDefault(s => s.Id == guardada);
+
+                // Si no encuentra la guardada, usa la primera (Todas)
+                SucursalSeleccionada = encontrada ?? Sucursales.First();
+                CargarDatos();
+            }
+        }
         private void CargarListaSucursales()
         {
             Sucursales.Clear();

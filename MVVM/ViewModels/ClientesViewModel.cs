@@ -28,10 +28,40 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly IDialogService _dialogService;
         private readonly INotificationService _notificationService;
         private readonly CatalogoService _catalogoService;
+        private readonly SucursalesService _sucursalesService;
         public FilterService Filters { get; }
+        private bool _isInitialized = false;
 
         // --- FILTROS ---
         public ObservableCollection<int> AñosDisponibles { get; set; }
+        public ObservableCollection<SucursalModel> Sucursales { get; set; } = new ObservableCollection<SucursalModel>();
+
+        private SucursalModel _sucursalSeleccionada;
+        public SucursalModel SucursalSeleccionada
+        {
+            get => _sucursalSeleccionada;
+            set
+            {
+                if ( _sucursalSeleccionada != value )
+                {
+                    _sucursalSeleccionada = value;
+                    OnPropertyChanged();
+
+                    // Cuando cambia la sucursal, actualizamos el Filtro Global y recargamos
+                    if ( value != null )
+                    {
+                        Filters.SucursalId = value.Id;
+
+                        // Solo recargamos si ya estábamos inicializados
+                        if ( _isInitialized )
+                        {
+                            CargarDatosIniciales();
+                            _notificationService.ShowInfo($"Analizando clientes de: {value.Nombre}");
+                        }
+                    }
+                }
+            }
+        }
 
         private int _anioSeleccionado;
         public int AnioSeleccionado
@@ -170,7 +200,7 @@ namespace WPF_PAR.MVVM.ViewModels
         // =============================================================================
         // CONSTRUCTOR
         // =============================================================================
-        public ClientesViewModel(ReportesService reportesService, FilterService filterService, IDialogService dialogService, INotificationService notificationService, BusinessLogicService businessLogic)
+        public ClientesViewModel(ReportesService reportesService, FilterService filterService, IDialogService dialogService, INotificationService notificationService, BusinessLogicService businessLogic, SucursalesService sucursalesService)
         {
             _reportesService = reportesService;
             Filters = filterService;
@@ -182,6 +212,8 @@ namespace WPF_PAR.MVVM.ViewModels
             int year = DateTime.Now.Year;
             AñosDisponibles = new ObservableCollection<int> { year, year - 1, year - 2, year - 3 };
             _anioSeleccionado = year;
+            // 4. NUEVO: ASIGNAR SERVICIO
+            _sucursalesService = sucursalesService;
 
             // Configurar comandos
             ActualizarCommand = new RelayCommand(o => CargarDatosIniciales());
@@ -212,34 +244,63 @@ namespace WPF_PAR.MVVM.ViewModels
         // =============================================================================
         public async void CargarDatosIniciales()
         {
+            // 5. NUEVO: CARGAR SUCURSALES PRIMERO (LAZY LOADING)
+            if ( Sucursales.Count == 0 )
+            {
+                try
+                {
+                    var dic = _sucursalesService.CargarSucursales();
+                    Sucursales.Clear();
+                    Sucursales.Add(new SucursalModel { Id = 0, Nombre = "TODAS" }); // Opción global
+
+                    if ( dic != null )
+                    {
+                        foreach ( var kvp in dic )
+                            Sucursales.Add(new SucursalModel { Id = kvp.Key, Nombre = kvp.Value });
+                    }
+
+                    // Seleccionar default desde Settings
+                    int idGuardado = Properties.Settings.Default.SucursalDefaultId;
+                    var encontrada = Sucursales.FirstOrDefault(s => s.Id == idGuardado);
+
+                    // Al asignar esto, se actualiza Filters.SucursalId gracias al Setter
+                    SucursalSeleccionada = encontrada ?? Sucursales.First();
+                }
+                catch ( Exception ex )
+                {
+                    _notificationService.ShowError("Error al cargar sucursales: " + ex.Message);
+                }
+            }
+
+            // Si ya estamos inicializados, procedemos con la carga de clientes
+            // (La primera vez esto se ejecuta al final de cargar sucursales)
+
             IsLoading = true;
             try
             {
-                // Usamos el Año Seleccionado en el Combo
                 string anioActualStr = AnioSeleccionado.ToString();
                 string anioAnteriorStr = ( AnioSeleccionado - 1 ).ToString();
                 string sucursalId = Filters.SucursalId.ToString();
 
-                // Carga paralela de datos (Año Actual y Año Anterior)
                 var taskActual = _reportesService.ObtenerHistoricoAnualPorArticulo(anioActualStr, sucursalId);
                 var taskAnterior = _reportesService.ObtenerHistoricoAnualPorArticulo(anioAnteriorStr, sucursalId);
 
                 await Task.WhenAll(taskActual, taskAnterior);
 
-                // Procesamiento lógico (Agrupar por cliente, sumar meses, etc.)
                 _todosLosClientes = await Task.Run(() => _logicService.ProcesarClientes(taskActual.Result, taskAnterior.Result));
 
-                // Calcular KPIs Globales
                 TotalClientesActivos = _todosLosClientes.Count(x => x.VentaAnualActual > 0);
                 TotalClientesInactivos = _todosLosClientes.Count(x => x.VentaAnualActual == 0 && x.VentaAnualAnterior > 0);
 
-                // Refrescar UI
+                OnPropertyChanged(nameof(TotalClientesActivos));
+                OnPropertyChanged(nameof(TotalClientesInactivos));
+
                 FiltrarTabla();
                 CalcularVisibilidadPeriodos();
 
-                // Resetear selección
                 ClienteSeleccionado = null;
                 SeriesGrafica = null;
+                _isInitialized = true;
             }
             catch ( Exception ex )
             {
@@ -250,7 +311,6 @@ namespace WPF_PAR.MVVM.ViewModels
                 IsLoading = false;
             }
         }
-
         private async Task CargarProductosDinamicos()
         {
             if ( ClienteSeleccionado == null ) return;

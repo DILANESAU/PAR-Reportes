@@ -9,5 +9,6 @@ namespace WPF_PAR.Services.Interfaces
         void ShowMessage(string message, string title);
         void ShowError(string message, string title);
         string ShowSaveFileDialog(string filter, string defaultFileName);
+        bool ShowConfirmation (string message, string title);
     }
 }

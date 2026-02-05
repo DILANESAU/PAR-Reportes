@@ -20,6 +20,11 @@ namespace WPF_PAR.Services
         {
             MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
+        public bool ShowConfirmation(string message, string title)
+        {
+            var result = MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
+            return result == MessageBoxResult.Yes;
+        }
 
         public string ShowSaveFileDialog(string filter, string defaultFileName)
         {

@@ -37,18 +37,6 @@ namespace WPF_PAR.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Purple")]
-        public string PrimayColor {
-            get {
-                return ((string)(this["PrimayColor"]));
-            }
-            set {
-                this["PrimayColor"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public int SucursalDefaultId {
             get {
@@ -56,6 +44,78 @@ namespace WPF_PAR.Properties {
             }
             set {
                 this["SucursalDefaultId"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("192.168.123.211")]
+        public string Data_Server {
+            get {
+                return ((string)(this["Data_Server"]));
+            }
+            set {
+                this["Data_Server"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("General1")]
+        public string Data_Db {
+            get {
+                return ((string)(this["Data_Db"]));
+            }
+            set {
+                this["Data_Db"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Consulta")]
+        public string Data_User {
+            get {
+                return ((string)(this["Data_User"]));
+            }
+            set {
+                this["Data_User"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("SOPORTETECNICO-\\SQLEXPRESS")]
+        public string Auth_Server {
+            get {
+                return ((string)(this["Auth_Server"]));
+            }
+            set {
+                this["Auth_Server"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("SistemaGestionDB")]
+        public string Auth_Db {
+            get {
+                return ((string)(this["Auth_Db"]));
+            }
+            set {
+                this["Auth_Db"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("sa")]
+        public string Auth_User {
+            get {
+                return ((string)(this["Auth_User"]));
+            }
+            set {
+                this["Auth_User"] = value;
             }
         }
     }

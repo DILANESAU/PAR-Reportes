@@ -30,6 +30,7 @@ namespace WPF_PAR.MVVM.ViewModels
         private readonly FamiliaLogicService _familiaLogic;
         private readonly IDialogService _dialogService;
         private readonly INotificationService _notificationService;
+        private readonly SucursalesService _sucursalesService;
         public FilterService Filters { get; }
 
         private bool _isInitialized = false;
@@ -38,6 +39,33 @@ namespace WPF_PAR.MVVM.ViewModels
         public ObservableCollection<FamiliaResumenModel> TarjetasFamilias { get; set; } = new ObservableCollection<FamiliaResumenModel>();
         public ObservableCollection<FamiliaResumenModel> TarjetasArquitectonica { get; set; } = new ObservableCollection<FamiliaResumenModel>();
         public ObservableCollection<FamiliaResumenModel> TarjetasEspecializada { get; set; } = new ObservableCollection<FamiliaResumenModel>();
+        public ObservableCollection<SucursalModel> Sucursales { get; set; } = new ObservableCollection<SucursalModel>();
+        private SucursalModel _sucursalSeleccionada;
+        public SucursalModel SucursalSeleccionada
+        {
+            get => _sucursalSeleccionada;
+            set
+            {
+                if ( _sucursalSeleccionada != value )
+                {
+                    _sucursalSeleccionada = value;
+                    OnPropertyChanged();
+
+                    // Cuando cambia la sucursal, actualizamos el Filtro Global y recargamos
+                    if ( value != null )
+                    {
+                        Filters.SucursalId = value.Id;
+
+                        // Solo recargamos si ya estábamos inicializados para evitar doble carga al inicio
+                        if ( _isInitialized )
+                        {
+                            EjecutarReporte();
+                            _notificationService.ShowInfo($"Cambiando a sucursal: {value.Nombre}");
+                        }
+                    }
+                }
+            }
+        }
 
         private ObservableCollection<VentaReporteModel> _detalleVentas;
         public ObservableCollection<VentaReporteModel> DetalleVentas
@@ -161,14 +189,15 @@ namespace WPF_PAR.MVVM.ViewModels
             FilterService filterService,
             ChartService chartService,
             FamiliaLogicService familiaLogic,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            SucursalesService sucursalesService)
         {
             _dialogService = dialogService;
             Filters = filterService;
             _chartService = chartService;
             _familiaLogic = familiaLogic;
             _notificationService = notificationService;
-
+            _sucursalesService = sucursalesService;
             _reportesService = new ReportesService();
             _catalogoService = new CatalogoService(businessLogic);
 
@@ -232,13 +261,45 @@ namespace WPF_PAR.MVVM.ViewModels
 
         public void CargarDatosIniciales()
         {
+            // --- 5. MODIFICADO: CARGAR SUCURSALES PRIMERO ---
+
+            // Si ya cargamos las sucursales, no lo volvemos a hacer (Lazy Loading)
+            if ( Sucursales.Count == 0 )
+            {
+                try
+                {
+                    var dic = _sucursalesService.CargarSucursales();
+                    Sucursales.Clear();
+                    Sucursales.Add(new SucursalModel { Id = 0, Nombre = "TODAS" });
+
+                    if ( dic != null )
+                    {
+                        foreach ( var kvp in dic )
+                            Sucursales.Add(new SucursalModel { Id = kvp.Key, Nombre = kvp.Value });
+                    }
+
+                    // Seleccionar default
+                    int idGuardado = Properties.Settings.Default.SucursalDefaultId;
+                    var encontrada = Sucursales.FirstOrDefault(s => s.Id == idGuardado);
+
+                    // IMPORTANTE: Esto dispara el Setter -> Actualiza Filter.SucursalId
+                    SucursalSeleccionada = encontrada ?? Sucursales.First();
+                }
+                catch ( Exception ex )
+                {
+                    _notificationService.ShowError("Error cargando sucursales: " + ex.Message);
+                }
+            }
+
+            // Si ya estábamos inicializados en esta sesión, solo refrescamos datos si es necesario
             if ( _isInitialized ) return;
+
             _notificationService.ShowInfo("Cargando familias...");
             IsLoading = true;
             CargarPorLinea("Todas");
             EjecutarReporte();
             _isInitialized = true;
-            _notificationService.ShowSuccess("Familias cargadas"); // Pruebas
+            _notificationService.ShowSuccess("Datos actualizados");
         }
 
         public void CargarPorLinea(string linea)

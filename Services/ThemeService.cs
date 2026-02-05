@@ -39,48 +39,7 @@ namespace WPF_PAR.Services
             ThemeChanged?.Invoke(isDark);
         }
 
-        public void SetPrimaryColor(string colorName)
-        {
-            Color color = Colors.Purple; // Default
 
-            try
-            {
-                var convert = ColorConverter.ConvertFromString(colorName);
-                if ( convert is Color c ) color = c;
-            }
-            catch { }
 
-            Theme theme = _paletteHelper.GetTheme();
-
-            theme.SetPrimaryColor(color);
-
-            _paletteHelper.SetTheme(theme);
-
-            try
-            {
-                Properties.Settings.Default.PrimayColor = colorName;
-                Properties.Settings.Default.Save();
-            }
-            catch { }
-        }
-
-        public void LoadSavedTheme()
-        {
-            try
-            {
-                bool isDark = Properties.Settings.Default.IsDarkMode;
-                SetThemeMode(isDark);
-
-                string color = Properties.Settings.Default.PrimayColor;
-                if ( !string.IsNullOrEmpty(color) )
-                {
-                    SetPrimaryColor(color);
-                }
-            }
-            catch
-            {
-                SetThemeMode(false);
-            }
-        }
     }
 }

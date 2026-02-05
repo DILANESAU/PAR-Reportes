@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 using WPF_PAR.MVVM.Models;
-using System.Threading.Tasks; // <--- FALTABA ESTE
-using System.Linq;            // <--- FALTABA ESTE
+
+using static WPF_PAR.Services.SqlHelper;
 
 namespace WPF_PAR.Services
 {
@@ -12,11 +14,19 @@ namespace WPF_PAR.Services
     {
         private readonly SqlHelper _authSqlHelper;
 
-        public AuthService() { _authSqlHelper = new SqlHelper("AuthConnection"); }
+        public AuthService()
+        {
+            // CAMBIO CRUCIAL:
+            // Antes: new SqlHelper("AuthConnection");
+            // Ahora: Le decimos explícitamente "Conéctate al servidor de AUTH"
+            _authSqlHelper = new SqlHelper(TipoConexion.Auth);
+        }
 
         public async Task<UsuarioModel> ValidarLoginAsync(string usuarioInput, string passwordInput)
         {
             UsuarioModel usuarioEncontrado = null;
+
+            // ... (El resto de tu lógica SQL se queda IGUAL, está perfecta) ...
 
             string query = @"
                 SELECT 
@@ -51,9 +61,10 @@ namespace WPF_PAR.Services
 
             if ( usuarioEncontrado == null ) return null;
 
+            // Lógica de Permisos (Se queda igual)
             if ( usuarioEncontrado.Rol.Equals("Admin", StringComparison.OrdinalIgnoreCase) )
             {
-                usuarioEncontrado.SucursalesPermitidas = null;
+                usuarioEncontrado.SucursalesPermitidas = null; // null significa "Todas"
             }
             else
             {
@@ -62,7 +73,6 @@ namespace WPF_PAR.Services
                     FROM UsuarioSucursales
                     WHERE IdUsuario = @Id";
 
-                // Reutilizamos el parametro de usuario
                 var paramsPermisos = new Dictionary<string, object> { { "@Id", usuarioEncontrado.IdUsuario } };
 
                 var listaIds = await _authSqlHelper.QueryAsync(queryPermisos, paramsPermisos, lector =>

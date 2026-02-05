@@ -5,60 +5,58 @@
              TextElement.Foreground="{DynamicResource MaterialDesignBody}"
              Background="Transparent">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="40">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
         <StackPanel MaxWidth="1000" HorizontalAlignment="Center">
 
-            <StackPanel Margin="0,0,0,30" HorizontalAlignment="Center">
-                <TextBlock Text="Configuración" Style="{StaticResource PageTitleStyle}" Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center"/>
-                <TextBlock Text="Personaliza tu experiencia y preferencias" Style="{StaticResource PageSubtitleStyle}" Foreground="{DynamicResource MaterialDesignBody}"/>
+            <StackPanel Margin="0,0,0,40" HorizontalAlignment="Center">
+                <materialDesign:PackIcon Kind="CogOutline" Width="50" Height="50" HorizontalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}" Margin="0,0,0,10"/>
+                <TextBlock Text="Configuración del Sistema" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}"/>
+                <TextBlock Text="Gestiona tus preferencias y conexiones" FontSize="16" Opacity="0.6" HorizontalAlignment="Center"/>
             </StackPanel>
 
-            <WrapPanel Orientation="Horizontal">
+            <TextBlock Text="PREFERENCIAS DE USUARIO" FontWeight="Bold" Opacity="0.5" Margin="5,0,0,10"/>
 
-                <!--<materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="450" Height="180" Margin="0,0,30,30">
+            <Grid Margin="0,0,0,30">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <materialDesign:Card Grid.Column="0" UniformCornerRadius="20" Padding="20" materialDesign:ElevationAssist.Elevation="Dp2">
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="25" Width="40" Height="40">
-                                <materialDesign:PackIcon Kind="ThemeLightDark" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                            </Border>
-                            <TextBlock Text="Tema Visual" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                        <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="15" Width="50" Height="50">
+                            <materialDesign:PackIcon Kind="ThemeLightDark" Width="25" Height="25" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0">
+                            <TextBlock Text="Modo Oscuro" FontWeight="Bold" FontSize="16"/>
+                            <TextBlock Text="Cambiar apariencia" FontSize="12" Opacity="0.6"/>
                         </StackPanel>
 
-                        <Grid Grid.Row="1" VerticalAlignment="Center">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="Modo Oscuro" Style="{StaticResource PageTitleStyle}" Foreground="{DynamicResource MaterialDesignBody}"  />
-                                <TextBlock Text="Reduce la fatiga visual en ambientes con poca luz." Opacity="0.5" FontSize="13" TextWrapping="Wrap" Margin="0,5,10,0" Style="{StaticResource PageTitleStyle}" Foreground="{DynamicResource MaterialDesignBody}" />
-                            </StackPanel>
-                            <ToggleButton Grid.Column="1" IsChecked="{Binding IsDarkMode}" Style="{StaticResource MaterialDesignSwitchToggleButton}" Height="30" Width="60"/>
-                        </Grid>
+                        <ToggleButton Grid.Column="2" IsChecked="{Binding IsDarkMode, Mode=TwoWay}" Style="{StaticResource MaterialDesignSwitchToggleButton}"/>
                     </Grid>
-                </materialDesign:Card>-->
+                </materialDesign:Card>
 
-                <materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="450" Height="180" Margin="0,0,30,30">
+                <materialDesign:Card Grid.Column="2" UniformCornerRadius="20" Padding="20" materialDesign:ElevationAssist.Elevation="Dp2">
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                            <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="25" Width="40" Height="40">
-                                <materialDesign:PackIcon Kind="StoreMarker" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                            </Border>
-                            <TextBlock Text="Sucursal Predeterminada" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="15,0,0,0"/>
-                        </StackPanel>
+                        <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="15" Width="50" Height="50">
+                            <materialDesign:PackIcon Kind="StoreMarker" Width="25" Height="25" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                        </Border>
 
-                        <StackPanel Grid.Row="1">
-                            <TextBlock Text="Se seleccionará automáticamente al iniciar sesión." Opacity="0.5" FontSize="13" Margin="0,0,0,10"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
+                            <TextBlock Text="Sucursal Predeterminada" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -67,74 +65,107 @@
                                 <ComboBox ItemsSource="{Binding MisSucursales}" 
                                           SelectedValue="{Binding MiSucursalDefault}"
                                           DisplayMemberPath="Value" SelectedValuePath="Key"
-                                          materialDesign:HintAssist.Hint="Seleccionar Sucursal"
-                                          Style="{StaticResource MaterialDesignOutlinedComboBox}" VerticalAlignment="Center"/>
+                                          materialDesign:HintAssist.Hint="Seleccionar..."
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}" Height="35" Padding="10,5" FontSize="12"/>
 
-                                <Button Grid.Column="1" Command="{Binding GuardarCommand}" Style="{StaticResource MaterialDesignIconForegroundButton}" ToolTip="Guardar Cambios" Margin="10,0,0,0">
-                                    <materialDesign:PackIcon Kind="ContentSave" Width="24" Height="24" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                <Button Grid.Column="1" Command="{Binding GuardarSucursalCommand}" Margin="10,0,0,0"
+                                        Style="{StaticResource MaterialDesignIconForegroundButton}" ToolTip="Guardar">
+                                    <materialDesign:PackIcon Kind="ContentSave" Width="20" Height="20" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
                                 </Button>
                             </Grid>
                         </StackPanel>
                     </Grid>
                 </materialDesign:Card>
+            </Grid>
 
-                <materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="930" Margin="0,0,30,30">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                            <Border Background="{DynamicResource PrimaryHueLightBrush}" CornerRadius="25" Width="40" Height="40">
-                                <materialDesign:PackIcon Kind="Palette" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                            </Border>
-                            <TextBlock Text="Personalización de Color" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="15,0,0,0"/>
-                        </StackPanel>
+            <TextBlock Text="CONEXIÓN A SERVIDORES" FontWeight="Bold" Opacity="0.5" Margin="5,0,0,10"/>
 
-                        <TextBlock Text="Elige el color de énfasis para botones y elementos destacados:" Opacity="0.6" Margin="0,0,0,15"/>
+            <Grid Margin="0,0,0,30">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="30"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-                        <ItemsControl ItemsSource="{Binding ColoresDisponibles}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Width="50" Height="50" Margin="0,0,15,15"
-                                        Background="{Binding CodigoHex}" 
-                                        BorderBrush="{Binding CodigoHex}"
-                                        Style="{StaticResource MaterialDesignFloatingActionMiniButton}"
-                                        Command="{Binding DataContext.CambiarColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding CodigoHex}"
-                                        ToolTip="{Binding Nombre}">
-
-                                        <materialDesign:PackIcon Kind="Check" 
-                                            Width="24" Height="24" 
-                                            Foreground="White"
-                                            Visibility="{Binding EsSeleccionado, Converter={StaticResource BoolToVis}}"/>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </materialDesign:Card>
-
-                <materialDesign:Card Style="{StaticResource ContentCardStyle}" Width="930" Margin="0,0,30,30">
+                <materialDesign:Card Grid.Column="0" UniformCornerRadius="20" Padding="0" materialDesign:ElevationAssist.Elevation="Dp3">
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <materialDesign:PackIcon Kind="InformationOutline" Width="50" Height="50" Foreground="#B0BEC5" VerticalAlignment="Top" Margin="0,10,20,0"/>
-                        <StackPanel Grid.Column="1">
-                            <TextBlock Text="Acerca de PAR Reportes" FontWeight="Bold" FontSize="16"/>
-                            <TextBlock Text="Versión 1.0.2 - Compilación 2025" Opacity="0.5" FontSize="12" Margin="0,2,0,10"/>
-                            <TextBlock Text="Desarrollado para uso interno. Si encuentras algún error o necesitas un reporte adicional, contacta al departamento de sistemas." TextWrapping="Wrap" Opacity="0.7"/>
-                            <Button Style="{StaticResource MaterialDesignFlatButton}" HorizontalAlignment="Left" Margin="-10,10,0,0"
-                                    Content="VER REGISTRO DE CAMBIOS" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Background="#FFF3E0" Padding="20">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Security" Width="24" Height="24" Foreground="#FF9800" VerticalAlignment="Center"/>
+                                <TextBlock Text="Servidor de Seguridad" FontWeight="Bold" FontSize="16" Foreground="#E65100" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Grid.Row="1" Margin="20">
+                            <TextBox Text="{Binding AuthServer}" materialDesign:HintAssist.Hint="IP Servidor Login" Style="{StaticResource MaterialDesignFloatingHintTextBox}" Margin="0,0,0,15"/>
+                            <TextBox Text="{Binding AuthDb}" materialDesign:HintAssist.Hint="BD Usuarios" Style="{StaticResource MaterialDesignFloatingHintTextBox}" Margin="0,0,0,15"/>
+                            <TextBox Text="{Binding AuthUser}" materialDesign:HintAssist.Hint="Usuario SQL" Style="{StaticResource MaterialDesignFloatingHintTextBox}" Margin="0,0,0,15"/>
+                            <PasswordBox x:Name="AuthPassBox" Tag="Auth" materialDesign:HintAssist.Hint="Contraseña" Style="{StaticResource MaterialDesignFloatingHintPasswordBox}"/>
                         </StackPanel>
+
+                        <Button Grid.Row="2" Command="{Binding GuardarConexionCommand}" CommandParameter="{Binding ElementName=AuthPassBox}"
+                                Style="{StaticResource MaterialDesignFlatButton}" Foreground="#E65100" Height="50" Content="GUARDAR CONFIGURACIÓN AUTH"/>
                     </Grid>
                 </materialDesign:Card>
 
-            </WrapPanel>
+                <materialDesign:Card Grid.Column="2" UniformCornerRadius="20" Padding="0" materialDesign:ElevationAssist.Elevation="Dp3">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Background="#E3F2FD" Padding="20">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Database" Width="24" Height="24" Foreground="#2196F3" VerticalAlignment="Center"/>
+                                <TextBlock Text="Servidor de Datos" FontWeight="Bold" FontSize="16" Foreground="#0D47A1" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Grid.Row="1" Margin="20">
+                            <TextBox Text="{Binding DataServer}" materialDesign:HintAssist.Hint="IP Servidor ERP" Style="{StaticResource MaterialDesignFloatingHintTextBox}" Margin="0,0,0,15"/>
+                            <TextBox Text="{Binding DataDb}" materialDesign:HintAssist.Hint="BD Intelisis" Style="{StaticResource MaterialDesignFloatingHintTextBox}" Margin="0,0,0,15"/>
+                            <TextBox Text="{Binding DataUser}" materialDesign:HintAssist.Hint="Usuario SQL" Style="{StaticResource MaterialDesignFloatingHintTextBox}" Margin="0,0,0,15"/>
+                            <PasswordBox x:Name="DataPassBox" Tag="Data" materialDesign:HintAssist.Hint="Contraseña" Style="{StaticResource MaterialDesignFloatingHintPasswordBox}"/>
+                        </StackPanel>
+
+                        <Button Grid.Row="2" Command="{Binding GuardarConexionCommand}" CommandParameter="{Binding ElementName=DataPassBox}"
+                                Style="{StaticResource MaterialDesignFlatButton}" Foreground="#0D47A1" Height="50" Content="GUARDAR CONFIGURACIÓN DATOS"/>
+                    </Grid>
+                </materialDesign:Card>
+            </Grid>
+
+            <materialDesign:Card UniformCornerRadius="15" Padding="15" materialDesign:ElevationAssist.Elevation="Dp1" Background="{DynamicResource MaterialDesignPaper}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Background="{DynamicResource MaterialDesignDivider}" Width="40" Height="40" CornerRadius="20">
+                        <materialDesign:PackIcon Kind="InformationVariant" Width="20" Height="20" Foreground="{DynamicResource MaterialDesignBody}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0">
+                        <TextBlock Text="PAR Intelligence Reportes v1.1.0" FontWeight="SemiBold"/>
+                        <TextBlock Text="Sistema de Inteligencia de Negocios · 2025" FontSize="12" Opacity="0.5"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <Button Style="{StaticResource MaterialDesignFlatButton}" Content="VER LOGS" Command="{Binding VerLogsCommand}" FontSize="12"/>
+                        <Button Style="{StaticResource MaterialDesignFlatButton}" Content="SOPORTE" Command="{Binding ContactarSoporteCommand}" FontSize="12"/>
+                    </StackPanel>
+                </Grid>
+            </materialDesign:Card>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>

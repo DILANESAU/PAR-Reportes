@@ -2,26 +2,75 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.Text;
-using System.Windows.Navigation;
+using System.Threading.Tasks;
 
 namespace WPF_PAR.Services
 {
     public class SqlHelper
     {
         private readonly string _connectionString;
-
-        // MODIFICACIÓN: Parámetro opcional con valor por defecto
-        public SqlHelper(string connectionKey = "SQLServerConnection")
+        public enum TipoConexion { Auth, Data }
+        public SqlHelper(TipoConexion tipo, string connectionStringOverride = null)
         {
-            // Busca la cadena por nombre. Si no existe, lanza error claro.
-            var settings = ConfigurationManager.ConnectionStrings[connectionKey];
-            if ( settings == null )
-                throw new Exception($"No se encontró la cadena de conexión: {connectionKey}");
+            if ( !string.IsNullOrEmpty(connectionStringOverride) )
+            {
+                _connectionString = connectionStringOverride;
+            }
+            else
+            {
+                string server = "", db = "", user = "", pass = "";
+                var secure = new SecureStorageService();
 
-            _connectionString = settings.ConnectionString;
+                // 3. Switch para decidir qué credenciales cargar
+                switch ( tipo )
+                {
+                    case TipoConexion.Auth:
+                        server = Properties.Settings.Default.Auth_Server;
+                        db = Properties.Settings.Default.Auth_Db;
+                        user = Properties.Settings.Default.Auth_User;
+                        pass = secure.RecuperarPassword(SecureStorageService.KeyAuth);
+                        break;
+
+                    case TipoConexion.Data:
+                        server = Properties.Settings.Default.Data_Server;
+                        db = Properties.Settings.Default.Data_Db;
+                        user = Properties.Settings.Default.Data_User;
+                        pass = secure.RecuperarPassword(SecureStorageService.KeyData);
+                        break;
+                }
+
+                // Validación simple
+                if ( string.IsNullOrWhiteSpace(server) || string.IsNullOrWhiteSpace(db) )
+                    _connectionString = "";
+                else
+                    _connectionString = $"Data Source={server};Initial Catalog={db};User ID={user};Password={pass};TrustServerCertificate=True;Timeout=30";
+            }
         }
+
+        // ====================================================================
+        // MÉTODO NUEVO: Para el botón "Probar Conexión"
+        // ====================================================================
+        public async Task<bool> ProbarConexionAsync()
+        {
+            try
+            {
+                using ( var conexion = new SqlConnection(_connectionString) )
+                {
+                    await conexion.OpenAsync();
+                    return true; // ¡Éxito!
+                }
+            }
+            catch ( Exception ex )
+            {
+                // Aquí podrías loguear el error si quisieras
+                System.Diagnostics.Debug.WriteLine("Error conexión: " + ex.Message);
+                return false;
+            }
+        }
+
+        // ====================================================================
+        // TUS MÉTODOS EXISTENTES (Sin cambios lógicos, solo siguen usando _connectionString)
+        // ====================================================================
         public async Task<List<T>> QueryAsync<T>(string query, Dictionary<string, object> parameters, Func<SqlDataReader, T> mapFunction)
         {
             var lista = new List<T>();
@@ -32,12 +81,10 @@ namespace WPF_PAR.Services
 
                 using ( var comando = new SqlCommand(query, conexion) )
                 {
-                    // Agregar parámetros si existen
                     if ( parameters != null )
                     {
                         foreach ( var param in parameters )
                         {
-                            // Manejo seguro de nulos (DBNull)
                             comando.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
                         }
                     }
@@ -48,14 +95,12 @@ namespace WPF_PAR.Services
                         {
                             while ( await lector.ReadAsync() )
                             {
-                                // Aquí ocurre la magia: convertimos la fila en objeto
                                 lista.Add(mapFunction(lector));
                             }
                         }
                     }
                     catch ( Exception ex )
                     {
-                        // Lanzamos la excepción para que el ViewModel (y tu DialogService) la muestre
                         throw new Exception($"Error al ejecutar SQL: {ex.Message}", ex);
                     }
                 }

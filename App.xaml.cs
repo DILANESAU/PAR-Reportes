@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
+using System.Linq; // Necesario para cerrar ventanas
 using WPF_PAR.MVVM.ViewModels;
 using WPF_PAR.MVVM.Views;
 using WPF_PAR.Services;
@@ -18,6 +19,7 @@ namespace WPF_PAR
 
         private static IServiceProvider ConfigureServices()
         {
+            // ... (Tu código de servicios se queda igual) ...
             var services = new ServiceCollection();
 
             services.AddSingleton<ThemeService>();
@@ -26,6 +28,7 @@ namespace WPF_PAR
             services.AddSingleton<FilterService>();
             services.AddSingleton<BusinessLogicService>();
             services.AddSingleton<SucursalesService>();
+            services.AddSingleton<SecureStorageService>(); // <--- Asegúrate de registrar este si usas inyección, o instáncialo manual
 
             services.AddTransient<FamiliaLogicService>();
             services.AddTransient<ClientesLogicService>();
@@ -42,35 +45,80 @@ namespace WPF_PAR
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<LoginViewModel>();
 
-
             services.AddTransient<MainWindow>();
             services.AddTransient<LoginWindow>();
 
             return services.BuildServiceProvider();
         }
 
+        // =========================================================
+        // AQUÍ ESTÁ EL CAMBIO CLAVE
+        // =========================================================
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
-            var themeService = Services.GetRequiredService<ThemeService>();
-            themeService.LoadSavedTheme();
-            var loginWindow = Services.GetRequiredService<LoginWindow>();
-            loginWindow.Show();
+            // 1. Validar Config Auth
+            string authIp = WPF_PAR.Properties.Settings.Default.Auth_Server;
+            var secure = new SecureStorageService();
+            string authPass = secure.RecuperarPassword(SecureStorageService.KeyAuth);
+
+            // 2. Validar Config Data
+            string dataIp = WPF_PAR.Properties.Settings.Default.Data_Server;
+            string dataPass = secure.RecuperarPassword(SecureStorageService.KeyData);
+
+            // Si falta CUALQUIERA de los dos, forzamos configuración
+            bool faltaConfig = string.IsNullOrEmpty(authIp) || string.IsNullOrEmpty(authPass) ||
+                               string.IsNullOrEmpty(dataIp) || string.IsNullOrEmpty(dataPass);
+
+            if ( faltaConfig )
+            {
+                AbrirMainWindow(modoConfiguracion: true);
+            }
+            else
+            {
+                var loginWindow = Services.GetRequiredService<LoginWindow>();
+                loginWindow.Show();
+            }
         }
 
-        public void AbrirMainWindow()
+        // Modificamos el método para aceptar un parámetro opcional
+        public void AbrirMainWindow(bool modoConfiguracion = false)
         {
             var mainWindow = Services.GetRequiredService<MainWindow>();
             var mainViewModel = Services.GetRequiredService<MainViewModel>();
 
-            // 1. Asignar el cerebro (ViewModel) a la vista
+            if ( modoConfiguracion )
+            {
+                // Forzamos la vista de Settings
+                mainViewModel.CurrentView = Services.GetRequiredService<SettingsViewModel>();
+
+                // Mensaje de bienvenida
+                mainViewModel.MessageQueue.Enqueue("Bienvenido. Configura la conexión al servidor para continuar.");
+            }
+            else
+            {
+                // Flujo normal (viene del Login)
+                // 1. Obtenemos el DashboardViewModel
+                var dashboardVM = Services.GetRequiredService<DashboardViewModel>();
+
+                // 2. Lo asignamos como vista actual
+                mainViewModel.CurrentView = dashboardVM;
+
+                // 3. ¡ESTA ES LA LÍNEA QUE FALTA! 🚀
+                // Disparamos la carga inicial para que busque las sucursales y datos
+                dashboardVM.CargarDatosIniciales();
+            }
+
             mainWindow.DataContext = mainViewModel;
-
-            // 2. ¡Listo! El Binding en el XAML se encargará de conectar el Snackbar
-            // Ya no necesitas las líneas del 'notifService' ni 'mainWindow.MainSnackbar...'
-
             mainWindow.Show();
+
+            // Asegurarnos de cerrar la ventana de Login si estaba abierta
+            var loginWindow = Application.Current.Windows.OfType<LoginWindow>().FirstOrDefault();
+            if ( loginWindow != null )
+            {
+                loginWindow.Close();
+            }
         }
     }
 }

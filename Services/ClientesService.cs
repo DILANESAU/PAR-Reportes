@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 
 using WPF_PAR.MVVM.Models;
 
+using static WPF_PAR.Services.SqlHelper;
+
 namespace WPF_PAR.Services
 {
     public class ClientesService
@@ -13,7 +15,7 @@ namespace WPF_PAR.Services
 
         public ClientesService()
         {
-            _sqlHelper = new SqlHelper();
+            _sqlHelper = new SqlHelper(TipoConexion.Data);
         }
 
         // ==============================================================================

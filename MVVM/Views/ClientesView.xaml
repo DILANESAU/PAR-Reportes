@@ -78,7 +78,8 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <ComboBox ItemsSource="{Binding Filters.ListaSucursales}" SelectedValue="{Binding Filters.SucursalId}"
+                        <ComboBox ItemsSource="{Binding Sucursales}" 
+          SelectedItem="{Binding SucursalSeleccionada}"
                                   DisplayMemberPath="Value" SelectedValuePath="Key" Width="160" Margin="0,0,15,0" 
                                   materialDesign:HintAssist.Hint="Sucursal" Style="{StaticResource MaterialDesignFloatingHintComboBox}"/>
 

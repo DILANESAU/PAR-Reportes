@@ -102,7 +102,11 @@ namespace WPF_PAR.MVVM.ViewModels
             }
 
             // Comandos
-            DashboardViewCommand = new RelayCommand(o => CurrentView = DashboardVM);
+            DashboardViewCommand = new RelayCommand(o =>
+            {
+                CurrentView = DashboardVM;
+                DashboardVM.CargarDatosIniciales(); // <--- TRIGGER ON NAVIGATION
+            });
 
             FamiliaViewCommand = new RelayCommand(o =>
             {
@@ -136,7 +140,7 @@ namespace WPF_PAR.MVVM.ViewModels
             }
 
             // Vista Inicial
-            CurrentView = DashboardVM;
+            //CurrentView = DashboardVM;
         }
 
     }
